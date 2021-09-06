@@ -38,6 +38,7 @@ parser.add_argument('--using_all_hops', type=bool, default=True,
                     help='whether using outputs of all hops or just the last hop when making prediction')
 '''
 
+parser.add_argument('--use_cuda', type=bool, default=True, help='whether to use gpu')
 args = parser.parse_args()
 
 show_loss = False

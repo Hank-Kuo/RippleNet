@@ -149,13 +149,6 @@ class RippleNet(object):
 
     def _build_train(self):
         self.optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
-        '''
-        optimizer = tf.train.AdamOptimizer(self.lr)
-        gradients, variables = zip(*optimizer.compute_gradients(self.loss))
-        gradients = [None if gradient is None else tf.clip_by_norm(gradient, clip_norm=5)
-                     for gradient in gradients]
-        self.optimizer = optimizer.apply_gradients(zip(gradients, variables))
-        '''
 
     def train(self, sess, feed_dict):
         return sess.run([self.optimizer, self.loss], feed_dict)
@@ -180,11 +173,24 @@ class RippleNet(nn.Module):
         super(RippleNet, self).__init__()
 
         self._parse_args(args, n_entity, n_relation)
-
-        self.entity_emb = nn.Embedding(self.n_entity, self.dim)
-        self.relation_emb = nn.Embedding(self.n_relation, self.dim * self.dim)
-        self.transform_matrix = nn.Linear(self.dim, self.dim, bias=False)
+        self._init_emb()
+        #self.entity_emb = nn.Embedding(self.n_entity, self.dim)
+        #self.relation_emb = nn.Embedding(self.n_relation, self.dim * self.dim)
+        #self.transform_matrix = nn.Linear(self.dim, self.dim, bias=False)
         self.criterion = nn.BCELoss()
+
+    def _init_emb(self):
+        entity_emb = nn.Embedding(self.n_entity, self.dim)
+        relation_emb = nn.Embedding(self.n_relation, self.dim * self.dim)
+        transform_matrix = nn.Linear(self.dim, self.dim, bias=False)
+        
+        torch.nn.init.xavier_uniform(entity_emb.weight)
+        torch.nn.init.xavier_uniform(relation_emb.weight)
+        torch.nn.init.xavier_uniform(transform_matrix.weight)
+        self.entity_emb = entity_emb
+        self.relation_emb = relation_emb
+        self.transform_matrix = transform_matrix
+
 
     def _parse_args(self, args, n_entity, n_relation):
         self.n_entity = n_entity

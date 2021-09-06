@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-import model.data_loader import data_loader
+import model.data_loader as data_loader
 from train import train
 
 np.random.seed(555)

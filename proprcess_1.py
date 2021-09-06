@@ -11,7 +11,7 @@ ouptut: output.txt, kg_final.txt, user2idx.txt, entity2id.txt, relation2idx.txt,
 THRESHOLD = 4 
 
 def count_line(file, text):
-    with open(file, 'r') as fp:
+    with open(file, 'r', encoding='utf-8') as fp:
         size = len(fp.readlines())
         print(text+': {}'.format(size-1))
 
@@ -33,18 +33,18 @@ if __name__ == '__main__':
     user_pos_ratings = dict()
     user_neg_ratings = dict()
 
-    user_file = './ml-100k.user'
-    item_file = './ml-100k.item'
-    link_file = './ml-100k.link'
-    inter_file = './ml-100k.inter'
-    kg_file = './ml-100k.kg'
+    user_file = './data/ml-100k/ml-100k.user'
+    item_file = './data/ml-100k/ml-100k.item'
+    link_file = './data/ml-100k/ml-100k.link'
+    inter_file = './data/ml-100k/ml-100k.inter'
+    kg_file = './data/ml-100k/ml-100k.kg'
 
-    output_file = './rating_final.txt'
-    kg_output_file = './kg_final.txt'
-    user2idx_file = './user2idx.txt'
-    entity2idx_file = './entity2idx.txt'
-    relation2idx_file = './relation2idx.txt'
-    item2idx_file = './item2idx.txt'
+    output_file = './data/ml-100k/ratings_final.txt'
+    kg_output_file = './data/ml-100k/kg_final.txt'
+    user2idx_file = './data/ml-100k/user2idx.txt'
+    entity2idx_file = './data/ml-100k/entity2idx.txt'
+    relation2idx_file = './data/ml-100k/relation2idx.txt'
+    item2idx_file = './data/ml-100k/item2idx.txt'
 
     ### ------------------------------------------- ###
 

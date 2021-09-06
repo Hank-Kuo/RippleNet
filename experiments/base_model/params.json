@@ -1,0 +1,19 @@
+{
+    "learning_rate": 0.0001,
+    "batch_size": 30,
+    "dropout": 0.1,
+    "reldrop": 0.0,
+    "entdrop": 0.0,
+    "scoredrop": 0.0,
+    "l3_reg": 0.0,
+    "label_smoothing": 0.0,
+    "decay": 1.0,
+
+    "hidden_dim": 200,
+    "embedding_dim": 256,
+    "relation_dim": 30,
+        
+    "epochs": 100,
+    "valid_every": 5,
+    "patience": 5
+}

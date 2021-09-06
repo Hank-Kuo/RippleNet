@@ -43,3 +43,6 @@ args = parser.parse_args()
 show_loss = False
 data_info = data_loader.load_data(args)
 train(args, data_info, show_loss)
+
+
+

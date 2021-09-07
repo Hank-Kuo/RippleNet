@@ -39,11 +39,13 @@ parser.add_argument('--using_all_hops', type=bool, default=True,
 '''
 
 parser.add_argument('--use_cuda', type=bool, default=True, help='whether to use gpu')
-args = parser.parse_args()
-
-show_loss = False
-data_info = data_loader.load_data(args)
-train(args, data_info, show_loss)
 
 
+def main():
+    args = parser.parse_args()
+    show_loss = False
+    data_info = data_loader.load_data(args)
+    train(args, data_info, show_loss)
 
+if __name__ == '__main__':
+    main()

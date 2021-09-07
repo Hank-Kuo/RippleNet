@@ -1,6 +1,6 @@
 import os
-import numpy as np
 import collections
+import numpy as np
 
 
 class LoadData:
@@ -8,30 +8,39 @@ class LoadData:
         self.args = args
 
     def load_data(self):
-        train_data, test_data, user_history_dict = self.load_rating()
-        n_entity, n_relation, kg = self.load_kg()
-        ripple_set = self.get_ripple_set(kg, user_history_dict)
-        return train_data, test_data, n_entity, n_relation, ripple_set
+        train_data, eval_data, test_data, user_history_dict = load_rating(self.args)
+        n_entity, n_relation, kg = load_kg(self.args)
+        ripple_set = get_ripple_set(kg, user_history_dict)
+        return train_data, eval_data, test_data, n_entity, n_relation, ripple_set
+
 
     def load_rating(self):
         print('reading rating file ...')
 
         # reading rating file
-        rating_file = os.path.join(self.args.dataset_dir, 'ratings_final')
+        rating_file = './data/' + self.args.dataset + '/ratings_final'
         if os.path.exists(rating_file + '.npy'):
             rating_np = np.load(rating_file + '.npy')
         else:
             rating_np = np.loadtxt(rating_file + '.txt', dtype=np.int32)
             np.save(rating_file + '.npy', rating_np)
+        return dataset_split(rating_np)
 
+
+    def dataset_split(self, rating_np):
         print('splitting dataset ...')
 
-        # train:test = 6:2
+        # train:eval:test = 6:2:2
+        eval_ratio = 0.2
         test_ratio = 0.2
         n_ratings = rating_np.shape[0]
-
-        test_indices = np.random.choice(n_ratings, size=int(n_ratings * test_ratio), replace=False)
-        train_indices = set(range(n_ratings)) - set(test_indices)
+        np.random.seed(555)
+        eval_indices = np.random.choice(n_ratings, size=int(n_ratings * eval_ratio), replace=False)
+        left = set(range(n_ratings)) - set(eval_indices)
+        np.random.seed(555)
+        test_indices = np.random.choice(list(left), size=int(n_ratings * test_ratio), replace=False)
+        train_indices = list(left - set(test_indices))
+        # print(len(train_indices), len(eval_indices), len(test_indices))
 
         # traverse training data, only keeping the users with positive ratings
         user_history_dict = dict()
@@ -45,18 +54,22 @@ class LoadData:
                 user_history_dict[user].append(item)
 
         train_indices = [i for i in train_indices if rating_np[i][0] in user_history_dict]
+        eval_indices = [i for i in eval_indices if rating_np[i][0] in user_history_dict]
         test_indices = [i for i in test_indices if rating_np[i][0] in user_history_dict]
+        print('Number of train dataset:{}, Number of valid dataset:{}, Number of test dataset:{}'.format(len(train_indices), len(eval_indices), len(test_indices)))
 
         train_data = rating_np[train_indices]
+        eval_data = rating_np[eval_indices]
         test_data = rating_np[test_indices]
 
-        return train_data, test_data, user_history_dict
+        return train_data, eval_data, test_data, user_history_dict
+
 
     def load_kg(self):
         print('reading KG file ...')
 
         # reading kg file
-        kg_file = os.path.join(self.args.dataset_dir, 'kg_final')
+        kg_file = './data/' + self.args.dataset + '/kg_final'
         if os.path.exists(kg_file + '.npy'):
             kg_np = np.load(kg_file + '.npy')
         else:
@@ -66,12 +79,18 @@ class LoadData:
         n_entity = len(set(kg_np[:, 0]) | set(kg_np[:, 2]))
         n_relation = len(set(kg_np[:, 1]))
 
+        kg = construct_kg(kg_np)
+
+        return n_entity, n_relation, kg
+
+
+    def construct_kg(self, kg_np):
         print('constructing knowledge graph ...')
         kg = collections.defaultdict(list)
         for head, relation, tail in kg_np:
             kg[head].append((tail, relation))
+        return kg
 
-        return n_entity, n_relation, kg
 
     def get_ripple_set(self, kg, user_history_dict):
         print('constructing ripple set ...')
@@ -96,15 +115,13 @@ class LoadData:
                         memories_r.append(tail_and_relation[1])
                         memories_t.append(tail_and_relation[0])
 
-                """
-                if the current ripple set of the given user is empty, we simply copy the ripple set of the last hop here
-                this won't happen for h = 0, because only the items that appear in the KG have been selected
-                this only happens on 154 users in Book-Crossing dataset (since both book dataset and the KG are sparse)
-                """
+                # if the current ripple set of the given user is empty, we simply copy the ripple set of the last hop here
+                # this won't happen for h = 0, because only the items that appear in the KG have been selected
+                # this only happens on 154 users in Book-Crossing dataset (since both BX dataset and the KG are sparse)
                 if len(memories_h) == 0:
                     ripple_set[user].append(ripple_set[user][-1])
                 else:
-                    # sample a fixed-size 1-hop memory for each user
+                    
                     replace = len(memories_h) < self.args.n_memory
                     indices = np.random.choice(len(memories_h), size=self.args.n_memory, replace=replace)
                     memories_h = [memories_h[i] for i in indices]

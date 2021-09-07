@@ -33,7 +33,7 @@ def dataset_split(rating_np):
     eval_ratio = 0.2
     test_ratio = 0.2
     n_ratings = rating_np.shape[0]
-    
+
     eval_indices = np.random.choice(n_ratings, size=int(n_ratings * eval_ratio), replace=False)
     left = set(range(n_ratings)) - set(eval_indices)
     test_indices = np.random.choice(list(left), size=int(n_ratings * test_ratio), replace=False)
@@ -53,6 +53,7 @@ def dataset_split(rating_np):
     train_indices = [i for i in train_indices if rating_np[i][0] in user_history_dict]
     eval_indices = [i for i in eval_indices if rating_np[i][0] in user_history_dict]
     test_indices = [i for i in test_indices if rating_np[i][0] in user_history_dict]
+    print('Number of train dataset:{}, Number of valid dataset:{}, Number of test dataset:{}'.format(len(train_indices), len(eval_indices), len(test_indices)))
 
     train_data = rating_np[train_indices]
     eval_data = rating_np[eval_indices]

@@ -1,3 +1,4 @@
+import numpy as np
 
 def evaluation(params, model, data_generator):
     auc_list = []

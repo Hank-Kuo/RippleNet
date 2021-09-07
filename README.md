@@ -13,6 +13,7 @@ Ripple Network overcomes the limitations of existing embedding-based and path-ba
 ## Usage
 - train model
 ```python 
+python preprocess_ml-100k.pyp
 python train.py
 ```
 
@@ -77,7 +78,7 @@ link: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 
 - Detail 
 
-|  | Movielens |
+|  | Movielens 10k |
 |:----------:|:-------|
 | #Users | 944 | 
 | #Items | 1683 |
@@ -85,8 +86,7 @@ link: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 | #Triplets | 91631 |
 | #Entities | 34713 |
 | #Relations | 26 |
-Rating
-[1-5]
+| Rating | [1-5] |
 
 
 
@@ -109,7 +109,10 @@ epoch 6    train auc: 0.9597  acc: 0.8939    eval auc: 0.8972  acc: 0.8243    te
 epoch 7    train auc: 0.9694  acc: 0.9083    eval auc: 0.8963  acc: 0.8219    test auc: 0.9013  acc: 0.8255
 epoch 8    train auc: 0.9766  acc: 0.9214    eval auc: 0.8920  acc: 0.8189    test auc: 0.8978  acc: 0.8245
 epoch 9    train auc: 0.9806  acc: 0.9299    eval auc: 0.8887  acc: 0.8156    test auc: 0.8926  acc: 0.8208
-
+## paper dataset 
+epoch 5    train auc: 0.9533  acc: 0.8836    eval auc: 0.9216  acc: 0.8466    test auc: 0.9206  acc: 0.8457
+## our dataset 
+epoch 5    train auc: 0.9533  acc: 0.8836    eval auc: 0.9216  acc: 0.8466    test auc: 0.9206  acc: 0.8457
 ## kk
 Dataset	#User	#Item	#Interaction	Sparsity	#Entity	#Relation	#Triple
 ml-1m	6,040	3,629	836,478	0.9618	79,388	51	385,923

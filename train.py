@@ -1,76 +1,112 @@
+import os
+import argparse
+from tqdm import tqdm
+import logging
+
+import model.net as net
+from evaluate import evaluation
+import model.data_loader as data_loader
+import utils.load_data as load_data
+import utils.utils as utils
+
 import numpy as np
 import torch
+from torch.utils import data as torch_data
+from torch.utils import tensorboard
 
-import model.model as net
-
-
-def train(args, data_info, show_loss):
-    train_data = data_info[0]
-    eval_data = data_info[1]
-    test_data = data_info[2]
-    n_entity = data_info[3]
-    n_relation = data_info[4]
-    ripple_set = data_info[5]
-
-    model = net.RippleNet(args, n_entity, n_relation)
-    if args.use_cuda:
-        model.cuda()
-    optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        args.lr,
-    )
-
-    for step in range(args.n_epoch):
-        # training
-        np.random.shuffle(train_data)
-        start = 0
-        while start < train_data.shape[0]:
-            return_dict = model(*get_feed_dict(args, train_data, ripple_set, start, start + args.batch_size))
-            loss = return_dict["loss"]
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            start += args.batch_size
-            if show_loss:
-                print('%.1f%% %.4f' % (start / train_data.shape[0] * 100, loss.item()))
-
-        # evaluation
-        train_auc, train_acc = evaluation(args, model, train_data, ripple_set, args.batch_size)
-        eval_auc, eval_acc = evaluation(args, model, eval_data, ripple_set, args.batch_size)
-        test_auc, test_acc = evaluation(args, model, test_data, ripple_set, args.batch_size)
-
-        print('epoch %d    train auc: %.4f  acc: %.4f    eval auc: %.4f  acc: %.4f    test auc: %.4f  acc: %.4f'
-                % (step, train_auc, train_acc, eval_auc, eval_acc, test_auc, test_acc))
+parser = argparse.ArgumentParser()
+parser.add_argument("--seed", default=555, help="Seed value.")
+parser.add_argument("--model_dir", default="./experiments/base_model", help="Path to model checkpoint (by default train from scratch).")
 
 
-def get_feed_dict(args, data, ripple_set, start, end):
-    items = torch.LongTensor(data[start:end, 1])
-    labels = torch.LongTensor(data[start:end, 2])
-    memories_h, memories_r, memories_t = [], [], []
-    for i in range(args.n_hop):
-        memories_h.append(torch.LongTensor([ripple_set[user][i][0] for user in data[start:end, 0]]))
-        memories_r.append(torch.LongTensor([ripple_set[user][i][1] for user in data[start:end, 0]]))
-        memories_t.append(torch.LongTensor([ripple_set[user][i][2] for user in data[start:end, 0]]))
-    if args.use_cuda:
-        items = items.cuda()
-        labels = labels.cuda()
-        memories_h = list(map(lambda x: x.cuda(), memories_h))
-        memories_r = list(map(lambda x: x.cuda(), memories_r))
-        memories_t = list(map(lambda x: x.cuda(), memories_t))
-    return items, labels, memories_h, memories_r,memories_t
+def main():
+    args = parser.parse_args()
+    
+    # torch setting
+    np.random.seed(args.seed)
+    torch.random.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    # os setting
+    params_path = os.path.join(args.model_dir, 'params.json')
+    checkpoint_dir = os.path.join(args.model_dir, 'checkpoint')
+    
+    # params
+    params = utils.Params(params_path)
+    params.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    utils.set_logger(os.path.join(args.model_dir, 'train.log'))
+    
+    # load dataset
+    print("===> Loading datasets")
+    train_data, eval_data, test_data, n_entity, n_relation, ripple_set= load_data.load_data(params)
+ 
+    # data loader
+    train_set = data_loader.Dataset(params, train_data, ripple_set)
+    eval_set = data_loader.Dataset(params, eval_data, ripple_set)
+    test_set = data_loader.Dataset(params, test_data, ripple_set)
+    train_generator = torch_data.DataLoader(train_set, batch_size=params.batch_size, drop_last=False,shuffle=True)
+    eval_generator = torch_data.DataLoader(eval_set, batch_size=params.batch_size, drop_last=False)
+    test_generator = torch_data.DataLoader(test_set, batch_size=params.batch_size, drop_last=False)
+    
+    # model
+    print("===> Building model")
+    model = net.RippleNet(params, n_entity, n_relation)
+    
+    model = model.to(params.device)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
+    # summary_writer = tensorboard.SummaryWriter(log_dir=args.model_dir)
+    start_epoch_id = 1
+    step = 0
+    best_score = 0.0
+
+    logging.info("Training Dataset: {}, Eval Dataset: {}, Test Dataset: {}\n".format(len(train_set), len(eval_set), len(test_set)))
+    print(model)
+    logging.info("Starting training ...")
+    
+    # Train
+    for epoch_id in range(start_epoch_id, params.epochs + 1):
+        print("Epoch {}/{}".format(epoch_id, params.epochs))
+        
+        loss_impacting_samples_count = 0
+        samples_count = 0
+        model.train()
+
+        with tqdm(total=len(train_generator)) as t:
+            for items, labels, memories_h, memories_r,memories_t in train_generator:
+                items = items.to(params.device)
+                labels = labels.to(params.device)
+                memories_h = memories_h.permute(1, 0, 2).to(params.device)
+                memories_r = memories_r.permute(1, 0, 2).to(params.device)
+                memories_t = memories_t.permute(1, 0, 2).to(params.device)
+                return_dict = model(items, labels, memories_h, memories_r, memories_t)
+                loss = return_dict["loss"]
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                loss_impacting_samples_count += loss.item()
+                samples_count += items.size()[0]
+
+                t.set_postfix(loss = loss_impacting_samples_count / samples_count * 100)
+                t.update()
+
+                #summary_writer.add_scalar('Loss/train', loss.mean().data.cpu().numpy(), global_step=step)
+                #summary_writer.add_scalar('Distance/positive', pd.sum().data.cpu().numpy(), global_step=step)
+                #summary_writer.add_scalar('Distance/negative', nd.sum().data.cpu().numpy(), global_step=step)
+       
+        # validation
+        if epoch_id % params.valid_every == 0:
+            model.eval()
+            train_auc, train_acc = evaluation(params, model, train_generator)
+            eval_auc, eval_acc = evaluation(params, model, eval_generator)
+            test_auc, test_acc = evaluation(params, model, test_generator)
+            logging.info('\nEval %d    train auc: %.4f  acc: %.4f    eval auc: %.4f  acc: %.4f    test auc: %.4f  acc: %.4f'% (epoch_id, train_auc, train_acc, eval_auc, eval_acc, test_auc, test_acc))
+            score = eval_auc
+            if score > best_score:
+                best_score = score
+                utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, best_score)
 
 
-def evaluation(args, model, data, ripple_set, batch_size):
-    start = 0
-    auc_list = []
-    acc_list = []
-    model.eval()
-    while start < data.shape[0]:
-        auc, acc = model.evaluate(*get_feed_dict(args, data, ripple_set, start, start + batch_size))
-        auc_list.append(auc)
-        acc_list.append(acc)
-        start += batch_size
-    model.train()
-    return float(np.mean(auc_list)), float(np.mean(acc_list))    
+if __name__ == '__main__':
+    main()

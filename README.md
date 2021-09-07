@@ -10,7 +10,7 @@ RippleNet is a deep end-to-end model that naturally incorporates the knowledge g
 Ripple Network overcomes the limitations of existing embedding-based and path-based KG-aware recommendation methods by introducing preference propagation, which automatically propagates users' potential preferences and explores their hierarchical interests in the KG.
 
 ## Usage
-**train model**
+**Train model**
 ```bash 
 python preprocess_ml-100k.py # ouput: ratings_final.txt, kg_final.txt
 python train.py
@@ -21,15 +21,14 @@ python train.py
 python evaluate.py
 ```
 
-## Requirment
-
 ## Dataset
 ### Movielens 100k
-link: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 
+- **link**: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 - **Dataset source**: Movielens 100k
 - **Knoweldge graph**: freebase subgraph
 
+#### Info
 - *.inter file: 
 
 | user_id | item_id  | rating | timestamp |
@@ -38,7 +37,6 @@ link: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 |  186    |   302    |   3    | 891717742 |
 |   22    |   377    |   1    | 878887116 |
 |  244    |   51     |   2    | 880606923 |
-
 
 - *.link
 
@@ -91,11 +89,11 @@ link: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 
 
 ### Movielens 1M
-- **[link](https://github.com/hwwang55/RippleNet)**
-
+- **link**: https://github.com/hwwang55/RippleNet
 - **Dataset source**: Movielens 1M
 - **Knoweldge graph**: Mircosoft Satori
 
+#### Info
 
 - Detail 
 
@@ -108,7 +106,6 @@ link: https://drive.google.com/drive/folders/1OkDVEqetvOrtbuWebxl4y1JlZ_YjjfWj
 | #Entities | 34713 |
 | #Relations | 26 |
 | Rating | [1-5] |
-
 
 ## Result
 
@@ -129,7 +126,7 @@ number of items: 2445
 number of entities (containing items): 182011
 number of relations: 12
 
-### Required packages
+## Required packages
 The code has been tested running under Python 3.6, with the following packages installed (along with their dependencies):
 - tqdm
 - logging

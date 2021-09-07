@@ -20,9 +20,6 @@ def load_rating(args):
     else:
         rating_np = np.loadtxt(rating_file + '.txt', dtype=np.int32)
         np.save(rating_file + '.npy', rating_np)
-
-    # n_user = len(set(rating_np[:, 0]))
-    # n_item = len(set(rating_np[:, 1]))
     return dataset_split(rating_np)
 
 

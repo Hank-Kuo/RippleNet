@@ -1,5 +1,5 @@
 {
-    "dataset": "ml-100k",
+    "dataset": "movie",
     "learning_rate": 0.02,
     "batch_size": 1024,
     

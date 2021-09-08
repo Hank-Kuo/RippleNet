@@ -139,6 +139,8 @@ class RippleNet(nn.Module):
             item_embeddings = self.transform_matrix(o)
         elif self.item_update_mode == "plus_transform":
             item_embeddings = self.transform_matrix(item_embeddings + o)
+        elif self.item_update_mode == "no_update":
+            item_embeddings = item_embeddings
         else:
             raise Exception("Unknown item updating mode: " + self.item_update_mode)
         return item_embeddings

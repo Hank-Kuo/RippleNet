@@ -16,3 +16,5 @@ def evaluation(params, model, data_generator):
     return float(np.mean(auc_list)), float(np.mean(acc_list))    
 
 
+if __name__ == '__main__':
+    print('Eval model')

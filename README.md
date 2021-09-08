@@ -14,6 +14,7 @@ Ripple Network overcomes the limitations of existing embedding-based and path-ba
 ```bash 
 python preprocess_ml-100k.py # ouput: ratings_final.txt, kg_final.txt
 python train.py
+tensorboard --logdir=experiments/base_model --host localhost --port 8088
 ```
 
 **Eval model**
@@ -94,6 +95,11 @@ python evaluate.py
 - **Knoweldge graph**: Mircosoft Satori
 
 #### Info
+- **Training Dataset**: 452253, **Eval Dataset**: 150740, **Test Dataset**: 150737
+- number of users: 6036
+- number of items: 2445
+- number of entities (containing items): 182011
+- number of relations: 12
 
 - Detail 
 
@@ -107,12 +113,17 @@ python evaluate.py
 | #Relations | 26 |
 | Rating | [1-5] |
 
+
+
 ## Result
 
 **MovieLens 1M**:
 |  | Train AUC | Train ACC | Eval AUC | Eval ACC | Test AUC | Test ACC |
 |:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
 | Epoch 5 | 0.9533 | 0.8836 | 0.9216 | 0.8466 | 0.9206 | 0.8457 |
+- use origin 
+
+Eval: train auc: 0.5092  acc: 0.5002    eval auc: 0.4851  acc: 0.5015    test auc: 0.4869  acc: 0.4977
 
 **MovieLens 100k**
 |  | Train AUC | Train ACC | Eval AUC | Eval ACC | Test AUC | Test ACC |
@@ -120,11 +131,6 @@ python evaluate.py
 | Epoch 6 | 0.9604 |  0.8931 | 0.8997 | 0.8248 | 0.9006 | 0.8250 |
 
 
-## paper dataset 
-number of users: 6036
-number of items: 2445
-number of entities (containing items): 182011
-number of relations: 12
 
 ## Required packages
 The code has been tested running under Python 3.6, with the following packages installed (along with their dependencies):
@@ -135,3 +141,8 @@ The code has been tested running under Python 3.6, with the following packages i
 - sklearn >= 0.19.1
 
 
+## Relative link
+- RecBole: https://github.com/RUCAIBox/RecBole
+- RecSysDataset: https://github.com/RUCAIBox/RecSysDatasets
+- KGAT: https://github.com/kangxiatao/KGAT-pytorch-master
+- KB4Rec: https://github.com/RUCDM/KB4Rec

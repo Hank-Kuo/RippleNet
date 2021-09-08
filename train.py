@@ -18,7 +18,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
 parser.add_argument("--model_dir", default="./experiments/base_model", help="Path to model checkpoint (by default train from scratch).")
 
-
 def main():
     args = parser.parse_args()
     
@@ -55,14 +54,17 @@ def main():
     
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
-    # summary_writer = tensorboard.SummaryWriter(log_dir=args.model_dir)
+    tb = utils.TensorboardSupervisor(args.model_dir)
+    summary_writer = tensorboard.SummaryWriter(log_dir=args.model_dir)
     start_epoch_id = 1
+    no_update = 0 
     step = 0
     best_score = 0.0
 
-    logging.info("Training Dataset: {}, Eval Dataset: {}, Test Dataset: {}\n".format(len(train_set), len(eval_set), len(test_set)))
+    logging.info("Number of Entity: {}, Number of Relation: {}".format(n_entity, n_relation))
+    logging.info("Training Dataset: {}, Eval Dataset: {}, Test Dataset: {}".format(len(train_set), len(eval_set), len(test_set)))
+    logging.info("===> Starting training ...")
     print(model)
-    logging.info("Starting training ...")
     
     # Train
     for epoch_id in range(start_epoch_id, params.epochs + 1):
@@ -87,13 +89,15 @@ def main():
                 optimizer.step()
                 loss_impacting_samples_count += loss.item()
                 samples_count += items.size()[0]
+                step += 1
 
                 t.set_postfix(loss = loss_impacting_samples_count / samples_count * 100)
                 t.update()
-
-                #summary_writer.add_scalar('Loss/train', loss.mean().data.cpu().numpy(), global_step=step)
-                #summary_writer.add_scalar('Distance/positive', pd.sum().data.cpu().numpy(), global_step=step)
-                #summary_writer.add_scalar('Distance/negative', nd.sum().data.cpu().numpy(), global_step=step)
+                
+                summary_writer.add_scalar('Loss/base_loss', return_dict["loss"].data.cpu().numpy(), global_step=step)
+                summary_writer.add_scalar('Loss/kge_loss', return_dict["kge_loss"].data.cpu().numpy(), global_step=step)
+                summary_writer.add_scalar('Loss/l2_loss', return_dict["l2_loss"].data.cpu().numpy(), global_step=step)
+                
        
         # validation
         if epoch_id % params.valid_every == 0:
@@ -101,12 +105,25 @@ def main():
             train_auc, train_acc = evaluation(params, model, train_generator)
             eval_auc, eval_acc = evaluation(params, model, eval_generator)
             test_auc, test_acc = evaluation(params, model, test_generator)
-            logging.info('\nEval %d    train auc: %.4f  acc: %.4f    eval auc: %.4f  acc: %.4f    test auc: %.4f  acc: %.4f'% (epoch_id, train_auc, train_acc, eval_auc, eval_acc, test_auc, test_acc))
+            logging.info('Eval: train auc: %.4f  acc: %.4f    eval auc: %.4f  acc: %.4f    test auc: %.4f  acc: %.4f'% (train_auc, train_acc, eval_auc, eval_acc, test_auc, test_acc))
+            summary_writer.add_scalar('Accuracy/train/AUC', train_auc , global_step=step)
+            summary_writer.add_scalar('Accuracy/train/ACC', train_acc , global_step=step)
+            summary_writer.add_scalar('Accuracy/eval/AUC', train_auc , global_step=step)
+            summary_writer.add_scalar('Accuracy/eval/ACC', eval_acc , global_step=step)
+            summary_writer.add_scalar('Accuracy/test/AUC', test_auc , global_step=step)
+            summary_writer.add_scalar('Accuracy/test/ACC', test_acc , global_step=step)
             score = eval_auc
             if score > best_score:
-                best_score = score
+                best_score = score                
                 utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, best_score)
+            elif score < best_score and (no_update <= params.patience):
+                no_update +=1
+                logging.info("- Validation accuracy decreases to {} from {}, {} more epoch to check".format(score, best_score, params.patience-no_update))
+            elif no_update == params.patience:
+                # early stopping
+                logging.info("- Model has exceed patience.")
+                exit()
 
-
+    tb.finalize()
 if __name__ == '__main__':
     main()

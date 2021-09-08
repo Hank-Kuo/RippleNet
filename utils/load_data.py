@@ -4,6 +4,9 @@ import numpy as np
 
 
 def load_data(args):
+    rating_file = './data/' + args.dataset + '/ratings_final'
+    kg_file = './data/' + args.dataset + '/kg_final'
+
     train_data, eval_data, test_data, user_history_dict = load_rating(args)
     n_entity, n_relation, kg = load_kg(args)
     ripple_set = get_ripple_set(args, kg, user_history_dict)

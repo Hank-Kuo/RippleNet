@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from sklearn.metrics import roc_auc_score
-from sklearn.metrics import f1_score
 
 
 class RippleNet(nn.Module):
@@ -57,12 +56,17 @@ class RippleNet(nn.Module):
             # [batch size, n_memory, dim]
             h_emb_list.append(self.entity_emb(memories_h[i]))
             # [batch size, n_memory, dim, dim]
-            r_emb_list.append(self.relation_emb(memories_r[i]).view(-1, self.n_memory, self.dim, self.dim))
+            r_emb_list.append(
+                self.relation_emb(memories_r[i]).view(
+                    -1, self.n_memory, self.dim, self.dim
+                )
+            )
             # [batch size, n_memory, dim]
             t_emb_list.append(self.entity_emb(memories_t[i]))
 
-        o_list, item_embeddings = self._key_addressing(h_emb_list, r_emb_list, t_emb_list, item_embeddings)
-
+        o_list, item_embeddings1 = self._key_addressing(
+            h_emb_list, r_emb_list, t_emb_list, item_embeddings
+        )
         scores = self.predict(item_embeddings, o_list)
 
         return_dict = self._compute_loss(
@@ -142,20 +146,15 @@ class RippleNet(nn.Module):
         return item_embeddings
 
     def predict(self, item_embeddings, o_list):
-        '''
-        out = torch.stack(o_list, dim=0)
-        out_prob = F.softmax(out, dim=0) # n_memory x batch x dim
-        scores = 0 
-        for i in range(self.n_hop):
-            scores = (item_embeddings * out_prob[i]).sum(dim=1)
-        '''
+    
         y = o_list[-1] # batch_size x dim
 
         if self.using_all_hops:
             for i in range(self.n_hop - 1):
                 y += o_list[i]
         # [batch_size]
-        scores = (item_embeddings * y).sum(dim=1)        
+        scores = (item_embeddings * y).sum(dim=1)
+        
         return torch.sigmoid(scores)
 
     def evaluate(self, items, labels, memories_h, memories_r, memories_t):
@@ -165,7 +164,5 @@ class RippleNet(nn.Module):
         auc = roc_auc_score(y_true=labels, y_score=scores)
         predictions = [1 if i >= 0.5 else 0 for i in scores]
         acc = np.mean(np.equal(predictions, labels))
-        f1 = f1_score(labels, predictions)
-
-        return auc, acc, f1
+        return auc, acc
         

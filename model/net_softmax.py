@@ -142,20 +142,12 @@ class RippleNet(nn.Module):
         return item_embeddings
 
     def predict(self, item_embeddings, o_list):
-        '''
         out = torch.stack(o_list, dim=0)
         out_prob = F.softmax(out, dim=0) # n_memory x batch x dim
         scores = 0 
         for i in range(self.n_hop):
             scores = (item_embeddings * out_prob[i]).sum(dim=1)
-        '''
-        y = o_list[-1] # batch_size x dim
 
-        if self.using_all_hops:
-            for i in range(self.n_hop - 1):
-                y += o_list[i]
-        # [batch_size]
-        scores = (item_embeddings * y).sum(dim=1)        
         return torch.sigmoid(scores)
 
     def evaluate(self, items, labels, memories_h, memories_r, memories_t):

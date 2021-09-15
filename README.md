@@ -14,14 +14,16 @@ Ripple Network overcomes the limitations of existing embedding-based and path-ba
 ```bash 
 python preprocess_ml-100k.py # ouput: ratings_final.txt, kg_final.txt
 python train.py
-tensorboard --logdir=experiments/base_model --host localhost --port 8088
 ```
 
 **Eval model**
 ```bash
 python evaluate.py
 ```
-
+**Tensorboard**
+```bash
+tensorboard --logdir=experiments/base_model # port: 6006
+```
 ## Dataset
 ### Movielens 100k
 

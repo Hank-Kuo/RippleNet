@@ -88,8 +88,9 @@ def save_checkpoint(checkpoint_dir: str, model: nn.Module, optim: optimizer.Opti
 
 
 class TensorboardSupervisor:
-    def __init__(self, log_dir):
-        self.delete_history(log_dir)
+    def __init__(self, log_dir, history=False):
+        if history:
+            self.delete_history(log_dir)
         self.server = TensorboardServer(log_dir)
         self.server.start()
         print("Started Tensorboard Server")

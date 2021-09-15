@@ -96,7 +96,7 @@ def get_ripple_set(args, kg, user_history_dict):
 
     for user in user_history_dict:
         for h in range(args.n_hop):
-            np.random.seed(555)
+            # np.random.seed(555)
             memories_h = []
             memories_r = []
             memories_t = []

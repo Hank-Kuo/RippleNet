@@ -1,0 +1,13 @@
+softmax:
+  ml100k:
+    Eval: train auc: 0.9340  acc: 0.8585    eval auc: 0.8851  acc: 0.8103    test auc: 0.8874  acc: 0.8108
+  movie:
+    Eval: train auc: 0.9508  acc: 0.8814    eval auc: 0.9213  acc: 0.8450    test auc: 0.9202  acc: 0.8436
+  book:
+    Eval: train auc: 0.8688  acc: 0.7861    eval auc: 0.7219  acc: 0.6724    test auc: 0.7112  acc: 0.6651
+
+- 做 softmax
+- 畫好完整架構圖
+- check loss 影響
+- 想法
+  - 把 attention 拔掉

@@ -54,10 +54,9 @@ def main():
     
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
-    tb = utils.TensorboardSupervisor(args.model_dir)
+    tb = utils.TensorboardSupervisor(args.model_dir, True)
     summary_writer = tensorboard.SummaryWriter(log_dir=args.model_dir)
     start_epoch_id = 1
-    no_update = 0 
     step = 0
     best_score = 0.0
 
@@ -102,27 +101,27 @@ def main():
         # validation
         if epoch_id % params.valid_every == 0:
             model.eval()
-            train_auc, train_acc = evaluation(params, model, train_generator)
-            eval_auc, eval_acc = evaluation(params, model, eval_generator)
-            test_auc, test_acc = evaluation(params, model, test_generator)
-            logging.info('Eval: train auc: %.4f  acc: %.4f    eval auc: %.4f  acc: %.4f    test auc: %.4f  acc: %.4f'% (train_auc, train_acc, eval_auc, eval_acc, test_auc, test_acc))
+            train_auc, train_acc, train_f1 = evaluation(params, model, train_generator)
+            eval_auc, eval_acc, eval_f1 = evaluation(params, model, eval_generator)
+            test_auc, test_acc, test_f1 = evaluation(params, model, test_generator)
+            logging.info('- Eval: train auc: %.4f  acc: %.4f  f1: %.4f'% (train_auc, train_acc, train_f1))
+            logging.info('- Eval: eval auc: %.4f  acc: %.4f  f1: %.4f'% (eval_auc, eval_acc, eval_f1))
+            logging.info('- Eval: test auc: %.4f  acc: %.4f  f1: %.4f'% (test_auc, test_acc, test_f1))
+            
             summary_writer.add_scalar('Accuracy/train/AUC', train_auc , global_step=step)
             summary_writer.add_scalar('Accuracy/train/ACC', train_acc , global_step=step)
-            summary_writer.add_scalar('Accuracy/eval/AUC', train_auc , global_step=step)
+            summary_writer.add_scalar('Accuracy/train/F1', train_f1 , global_step=step)
+            summary_writer.add_scalar('Accuracy/eval/AUC', eval_auc , global_step=step)
             summary_writer.add_scalar('Accuracy/eval/ACC', eval_acc , global_step=step)
+            summary_writer.add_scalar('Accuracy/eval/F1', eval_f1 , global_step=step)
             summary_writer.add_scalar('Accuracy/test/AUC', test_auc , global_step=step)
             summary_writer.add_scalar('Accuracy/test/ACC', test_acc , global_step=step)
+            summary_writer.add_scalar('Accuracy/test/F1', test_f1 , global_step=step)
+            
             score = eval_auc
             if score > best_score:
-                best_score = score                
+                best_score = score           
                 utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, best_score)
-            elif score < best_score and (no_update <= params.patience):
-                no_update +=1
-                logging.info("- Validation accuracy decreases to {} from {}, {} more epoch to check".format(score, best_score, params.patience-no_update))
-            elif no_update == params.patience:
-                # early stopping
-                logging.info("- Model has exceed patience.")
-                exit()
 
     tb.finalize()
 if __name__ == '__main__':

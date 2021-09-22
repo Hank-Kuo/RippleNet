@@ -1,3 +1,2 @@
-/experiments
-/data
-/else
+/data/*
+/else/*

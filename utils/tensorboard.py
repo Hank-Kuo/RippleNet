@@ -1,11 +1,11 @@
 import os 
 import sys
-import datetime 
+# import datetime 
 from multiprocessing import Process
 
 from torch.utils import tensorboard
 
-nowTime = str(datetime.datetime.now())
+# nowTime = str(datetime.datetime.now())
 
 class Tensorboard:
     def __init__(self, log_dir, history=False):

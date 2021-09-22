@@ -8,11 +8,11 @@ from evaluate import evaluation
 import model.data_loader as data_loader
 import utils.load_data as load_data
 import utils.utils as utils
+import utils.tensorboard as tensorboard
 
 import numpy as np
 import torch
 from torch.utils import data as torch_data
-from torch.utils import tensorboard
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
@@ -30,7 +30,9 @@ def main():
     # os setting
     params_path = os.path.join(args.model_dir, 'params.json')
     checkpoint_dir = os.path.join(args.model_dir, 'checkpoint')
-    
+    val_best_json_path = os.path.join(args.model_dir, "metrics_val_best_weights.json")
+    test_best_json_path = os.path.join(args.model_dir, "metrics_test_best_weights.json")
+
     # params
     params = utils.Params(params_path)
     params.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -54,8 +56,8 @@ def main():
     
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
-    tb = utils.TensorboardSupervisor(args.model_dir, True)
-    summary_writer = tensorboard.SummaryWriter(log_dir=args.model_dir)
+    tb = tensorboard.Tensorboard(args.model_dir, False)
+    writer = tb.create_writer()
     start_epoch_id = 1
     step = 0
     best_score = 0.0
@@ -93,36 +95,39 @@ def main():
                 t.set_postfix(loss = loss_impacting_samples_count / samples_count * 100)
                 t.update()
                 
-                summary_writer.add_scalar('Loss/base_loss', return_dict["loss"].data.cpu().numpy(), global_step=step)
-                summary_writer.add_scalar('Loss/kge_loss', return_dict["kge_loss"].data.cpu().numpy(), global_step=step)
-                summary_writer.add_scalar('Loss/l2_loss', return_dict["l2_loss"].data.cpu().numpy(), global_step=step)
+                writer.add_scalar('Loss/base_loss', return_dict["loss"].data.cpu().numpy(), global_step=step)
+                writer.add_scalar('Loss/kge_loss', return_dict["kge_loss"].data.cpu().numpy(), global_step=step)
+                writer.add_scalar('Loss/l2_loss', return_dict["l2_loss"].data.cpu().numpy(), global_step=step)
                 
        
         # validation
         if epoch_id % params.valid_every == 0:
             model.eval()
-            train_auc, train_acc, train_f1 = evaluation(params, model, train_generator)
-            eval_auc, eval_acc, eval_f1 = evaluation(params, model, eval_generator)
-            test_auc, test_acc, test_f1 = evaluation(params, model, test_generator)
-            logging.info('- Eval: train auc: %.4f  acc: %.4f  f1: %.4f'% (train_auc, train_acc, train_f1))
-            logging.info('- Eval: eval auc: %.4f  acc: %.4f  f1: %.4f'% (eval_auc, eval_acc, eval_f1))
-            logging.info('- Eval: test auc: %.4f  acc: %.4f  f1: %.4f'% (test_auc, test_acc, test_f1))
+            train_metrics = evaluation(params, model, train_generator)
+            val_metrics = evaluation(params, model, eval_generator)
+            test_metrics = evaluation(params, model, test_generator)
+            logging.info('- Eval: train auc: %.4f  acc: %.4f  f1: %.4f'% (train_metrics['auc'], train_metrics['acc'], train_metrics['f1']))
+            logging.info('- Eval: eval auc: %.4f  acc: %.4f  f1: %.4f'% (val_metrics['auc'], val_metrics['acc'], val_metrics['f1']))
+            logging.info('- Eval: test auc: %.4f  acc: %.4f  f1: %.4f'% (test_metrics['auc'], test_metrics['acc'], test_metrics['f1']))
             
-            summary_writer.add_scalar('Accuracy/train/AUC', train_auc , global_step=step)
-            summary_writer.add_scalar('Accuracy/train/ACC', train_acc , global_step=step)
-            summary_writer.add_scalar('Accuracy/train/F1', train_f1 , global_step=step)
-            summary_writer.add_scalar('Accuracy/eval/AUC', eval_auc , global_step=step)
-            summary_writer.add_scalar('Accuracy/eval/ACC', eval_acc , global_step=step)
-            summary_writer.add_scalar('Accuracy/eval/F1', eval_f1 , global_step=step)
-            summary_writer.add_scalar('Accuracy/test/AUC', test_auc , global_step=step)
-            summary_writer.add_scalar('Accuracy/test/ACC', test_acc , global_step=step)
-            summary_writer.add_scalar('Accuracy/test/F1', test_f1 , global_step=step)
+            writer.add_scalar('Accuracy/train/AUC', train_metrics['auc'] , global_step=step)
+            writer.add_scalar('Accuracy/train/ACC', train_metrics['acc'] , global_step=step)
+            writer.add_scalar('Accuracy/train/F1', train_metrics['f1'] , global_step=step)
+            writer.add_scalar('Accuracy/eval/AUC', val_metrics['auc'] , global_step=step)
+            writer.add_scalar('Accuracy/eval/ACC', val_metrics['acc'] , global_step=step)
+            writer.add_scalar('Accuracy/eval/F1', val_metrics['f1'] , global_step=step)
+            writer.add_scalar('Accuracy/test/AUC', test_metrics['auc'] , global_step=step)
+            writer.add_scalar('Accuracy/test/ACC', test_metrics['acc'] , global_step=step)
+            writer.add_scalar('Accuracy/test/F1', test_metrics['f1'] , global_step=step)
             
-            score = eval_auc
+            score = val_metrics['auc']
             if score > best_score:
                 best_score = score           
                 utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, best_score)
+                utils.save_dict_to_json(val_metrics, val_best_json_path)
+                utils.save_dict_to_json(test_metrics, test_best_json_path)
 
+                    
     tb.finalize()
 if __name__ == '__main__':
     main()

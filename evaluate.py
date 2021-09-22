@@ -15,7 +15,9 @@ def evaluation(params, model, data_generator):
         auc_list.append(auc)
         acc_list.append(acc)
         f1_list.append(f1)
-    return float(np.mean(auc_list)), float(np.mean(acc_list)), float(np.mean(f1_list)) 
+    
+    metrics_mean = {'auc': float(np.mean(auc_list)), 'acc': float(np.mean(acc_list)), 'f1':float(np.mean(f1_list)) }
+    return metrics_mean
 
 
 if __name__ == '__main__':

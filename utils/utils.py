@@ -84,7 +84,10 @@ def save_checkpoint(checkpoint_dir: str, model: nn.Module, optim: optimizer.Opti
         _BEST_SCORE: best_score
     }, checkpoint_path)
 
-
+def save_dict_to_json(d, json_path):
+    with open(json_path, 'w') as f:
+        d = {k: float(v) for k, v in d.items()}
+        json.dump(d, f, indent=4)
 
 
 class TensorboardSupervisor:

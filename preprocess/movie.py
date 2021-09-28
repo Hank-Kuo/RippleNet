@@ -1,37 +1,16 @@
-import argparse
 import numpy as np
 
-RATING_FILE_NAME = dict({'movie': 'ratings.dat', 'book': 'BX-Book-Ratings.csv', 'news': 'ratings.txt'})
-SEP = dict({'movie': '::', 'book': ';', 'news': '\t'})
-THRESHOLD = dict({'movie': 4, 'book': 0, 'news': 0})
+PATH = '../data/movie/'
+SEP = '::'
+THRESHOLD = 4 
 
-
-def read_item_index_to_entity_id_file():
-    file = './data/' + DATASET + '/item_index2entity_id_rehashed.txt'
-    print('reading item index to entity id file: ' + file + ' ...')
-    i = 0
-    for line in open(file, encoding='utf-8').readlines():
-        item_index = line.strip().split('\t')[0]
-        satori_id = line.strip().split('\t')[1]
-        item_index_old2new[item_index] = i
-        entity_id2index[satori_id] = i
-        i += 1
-
-
-def convert_rating():
-    file = './data/' + DATASET + '/' + RATING_FILE_NAME[DATASET]
-
+def convert_rating(rating_file, output_file, item_index_old2new):
     print('reading rating file ...')
     item_set = set(item_index_old2new.values())
     user_pos_ratings = dict()
     user_neg_ratings = dict()
-
-    for line in open(file, encoding='utf-8').readlines()[1:]:
-        array = line.strip().split(SEP[DATASET])
-
-        # remove prefix and suffix quotation marks for BX dataset
-        if DATASET == 'book':
-            array = list(map(lambda x: x[1:-1], array))
+    for line in open(rating_file, encoding='utf-8').readlines()[1:]:
+        array = line.strip().split(SEP)
 
         item_index_old = array[1]
         if item_index_old not in item_index_old2new:  # the item is not in the final item set
@@ -41,7 +20,7 @@ def convert_rating():
         user_index_old = int(array[0])
 
         rating = float(array[2])
-        if rating >= THRESHOLD[DATASET]:
+        if rating >= THRESHOLD:
             if user_index_old not in user_pos_ratings:
                 user_pos_ratings[user_index_old] = set()
             user_pos_ratings[user_index_old].add(item_index)
@@ -51,7 +30,8 @@ def convert_rating():
             user_neg_ratings[user_index_old].add(item_index)
 
     print('converting rating file ...')
-    writer = open('./data/' + DATASET + '/ratings_final.txt', 'w', encoding='utf-8')
+    
+    writer = open(output_file, 'w', encoding='utf-8')
     user_cnt = 0
     user_index_old2new = dict()
     for user_index_old, pos_item_set in user_pos_ratings.items():
@@ -72,21 +52,14 @@ def convert_rating():
     print('number of items: %d' % len(item_set))
 
 
-def convert_kg():
+def convert_kg(kg_files, output_file, entity_id2index, relation_id2index):
     print('converting kg file ...')
     entity_cnt = len(entity_id2index)
-    relation_cnt = 0
+    relation_cnt = 1
 
-    writer = open('./data/' + DATASET + '/kg_final.txt', 'w', encoding='utf-8')
+    writer = open(output_file, 'w', encoding='utf-8')
 
-    files = []
-    if DATASET == 'movie':
-        files.append(open('./data/' + DATASET + '/kg_part1_rehashed.txt', encoding='utf-8'))
-        files.append(open('./data/' + DATASET + '/kg_part2_rehashed.txt', encoding='utf-8'))
-    else:
-        files.append(open('./data/' + DATASET + '/kg_rehashed.txt', encoding='utf-8'))
-
-    for file in files:
+    for file in kg_files:
         for line in file:
             array = line.strip().split('\t')
             head_old = array[0]
@@ -117,18 +90,29 @@ def convert_kg():
 
 if __name__ == '__main__':
     np.random.seed(555)
+    
+    align_file = PATH + 'item_index2entity_id_rehashed.txt'
+    rating_file = PATH +  'ratings.dat'
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--dataset', type=str, default='movie', help='which dataset to preprocess')
-    args = parser.parse_args()
-    DATASET = args.dataset
+
+    output_file = PATH+ 'ratings_final.txt'
+    kg_output_file = PATH+ 'kg_final.txt'
 
     entity_id2index = dict()
     relation_id2index = dict()
     item_index_old2new = dict()
 
-    read_item_index_to_entity_id_file()
-    convert_rating()
-    convert_kg()
+    entity_cnt = 1
+    for line in open(align_file, encoding='utf-8').readlines():
+        item_index = line.strip().split('\t')[0]
+        satori_id = line.strip().split('\t')[1]
+        item_index_old2new[item_index] = entity_cnt
+        entity_id2index[satori_id] = entity_cnt
+        entity_cnt += 1
 
-    print('done')
+    convert_rating(rating_file, output_file, item_index_old2new)
+    
+    kg_files = []
+    kg_files.append(open(PATH+'kg_part1_rehashed.txt', encoding='utf-8'))
+    kg_files.append(open(PATH+'kg_part2_rehashed.txt', encoding='utf-8'))
+    convert_kg(kg_files, kg_output_file, entity_id2index, relation_id2index)

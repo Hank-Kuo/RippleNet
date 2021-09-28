@@ -8,37 +8,39 @@ from sklearn.metrics import f1_score
 
 
 class RippleNet(nn.Module):
-    def __init__(self, args, n_entity, n_relation):
+    def __init__(self, args):
         super(RippleNet, self).__init__()
 
-        self._parse_args(args, n_entity, n_relation)
+        self._parse_args(args)
         self._init_emb()
         self.criterion = nn.BCELoss()
 
     def _init_emb(self):
-        entity_emb = nn.Embedding(self.n_entity, self.dim)
-        relation_emb = nn.Embedding(self.n_relation, self.dim * self.dim)
+        entity_emb = nn.Embedding(self.n_entity+1, self.dim, padding_idx=0)
+        relation_emb = nn.Embedding(self.n_relation+1, self.dim * self.dim, padding_idx=0)
         transform_matrix = nn.Linear(self.dim, self.dim, bias=False)
         
         torch.nn.init.xavier_uniform_(entity_emb.weight)
         torch.nn.init.xavier_uniform_(relation_emb.weight)
         torch.nn.init.xavier_uniform_(transform_matrix.weight)
+        
         self.entity_emb = entity_emb
         self.relation_emb = relation_emb
         self.transform_matrix = transform_matrix
 
 
-    def _parse_args(self, args, n_entity, n_relation):
-        self.n_entity = n_entity
-        self.n_relation = n_relation
+    def _parse_args(self, args):
+        self.n_entity = args.n_entity
+        self.n_relation = args.n_relation
         self.dim = args.dim
         self.n_hop = args.n_hop
         self.kge_weight = args.kge_weight
         self.l2_weight = args.l2_weight
         self.learning_rate = args.learning_rate
-        self.n_memory = args.n_memory
+        self.n_memory = args.max_user_history_item
         self.item_update_mode = 'plus_transform'
         self.using_all_hops = True 
+        print('user history: {}'.format(max_user_history_item))
 
     def forward(
         self,
@@ -147,6 +149,7 @@ class RippleNet(nn.Module):
         if self.using_all_hops:
             for i in range(self.n_hop - 1):
                 y += o_list[i]
+        
         # [batch_size]
         scores = (item_embeddings * y).sum(dim=1)        
         return torch.sigmoid(scores)

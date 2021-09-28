@@ -1,5 +1,6 @@
 import os
 import argparse
+import json
 from tqdm import tqdm
 import logging
 
@@ -30,7 +31,6 @@ def main():
     # os setting
     params_path = os.path.join(args.model_dir, 'params.json')
     checkpoint_dir = os.path.join(args.model_dir, 'checkpoint')
-    val_best_json_path = os.path.join(args.model_dir, "metrics_val_best_weights.json")
     test_best_json_path = os.path.join(args.model_dir, "metrics_test_best_weights.json")
 
     # params
@@ -40,14 +40,15 @@ def main():
     
     # load dataset
     print("===> Loading datasets")
-    train_data, eval_data, test_data, n_entity, n_relation, ripple_set= load_data.load_data(params)
- 
+    train_data, test_data, n_entity, n_relation, max_user_history_item, ripple_set= load_data.load_data(params)
+    params.n_entity = n_entity
+    params.n_relation = n_relation
+    params.max_user_history_item = max_user_history_item
+
     # data loader
     train_set = data_loader.Dataset(params, train_data, ripple_set)
-    eval_set = data_loader.Dataset(params, eval_data, ripple_set)
     test_set = data_loader.Dataset(params, test_data, ripple_set)
     train_generator = torch_data.DataLoader(train_set, batch_size=params.batch_size, drop_last=False,shuffle=True)
-    eval_generator = torch_data.DataLoader(eval_set, batch_size=params.batch_size, drop_last=False)
     test_generator = torch_data.DataLoader(test_set, batch_size=params.batch_size, drop_last=False)
     
     # model
@@ -62,11 +63,12 @@ def main():
     step = 0
     best_score = 0.0
 
-    logging.info("Number of Entity: {}, Number of Relation: {}".format(n_entity, n_relation))
-    logging.info("Training Dataset: {}, Eval Dataset: {}, Test Dataset: {}".format(len(train_set), len(eval_set), len(test_set)))
+    logging.info("Number of Entity: {}, Number of Relation: {}, User History item: {}".format(n_entity, n_relation, max_user_history_item))
+    logging.info("Training Dataset: {}, Test Dataset: {}".format(len(train_set), len(test_set)))
     logging.info("===> Starting training ...")
+    print(model.__class__.__name__)
     print(model)
-    
+
     # Train
     for epoch_id in range(start_epoch_id, params.epochs + 1):
         print("Epoch {}/{}".format(epoch_id, params.epochs))
@@ -103,31 +105,23 @@ def main():
         # validation
         if epoch_id % params.valid_every == 0:
             model.eval()
-            train_metrics = evaluation(params, model, train_generator)
-            val_metrics = evaluation(params, model, eval_generator)
+
             test_metrics = evaluation(params, model, test_generator)
-            logging.info('- Eval: train auc: %.4f  acc: %.4f  f1: %.4f'% (train_metrics['auc'], train_metrics['acc'], train_metrics['f1']))
-            logging.info('- Eval: eval auc: %.4f  acc: %.4f  f1: %.4f'% (val_metrics['auc'], val_metrics['acc'], val_metrics['f1']))
             logging.info('- Eval: test auc: %.4f  acc: %.4f  f1: %.4f'% (test_metrics['auc'], test_metrics['acc'], test_metrics['f1']))
             
-            writer.add_scalar('Accuracy/train/AUC', train_metrics['auc'] , global_step=step)
-            writer.add_scalar('Accuracy/train/ACC', train_metrics['acc'] , global_step=step)
-            writer.add_scalar('Accuracy/train/F1', train_metrics['f1'] , global_step=step)
-            writer.add_scalar('Accuracy/eval/AUC', val_metrics['auc'] , global_step=step)
-            writer.add_scalar('Accuracy/eval/ACC', val_metrics['acc'] , global_step=step)
-            writer.add_scalar('Accuracy/eval/F1', val_metrics['f1'] , global_step=step)
             writer.add_scalar('Accuracy/test/AUC', test_metrics['auc'] , global_step=step)
             writer.add_scalar('Accuracy/test/ACC', test_metrics['acc'] , global_step=step)
             writer.add_scalar('Accuracy/test/F1', test_metrics['f1'] , global_step=step)
             
-            score = val_metrics['auc']
+            score = test_metrics['auc']
             if score > best_score:
-                best_score = score           
+                best_score = score   
+                test_metrics['epoch'] = epoch_id   
+                       
                 utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, best_score)
-                utils.save_dict_to_json(val_metrics, val_best_json_path)
                 utils.save_dict_to_json(test_metrics, test_best_json_path)
-
                     
     tb.finalize()
+
 if __name__ == '__main__':
     main()

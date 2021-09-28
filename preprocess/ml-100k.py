@@ -8,14 +8,13 @@ ouptut: output.txt, kg_final.txt, user2idx.txt, entity2id.txt, relation2idx.txt,
     kg_final.txt: h r t
 '''
 
+PATH = '../data/ml-100k/'
 THRESHOLD = 4 
 
 def count_line(file, text):
     with open(file, 'r', encoding='utf-8') as fp:
         size = len(fp.readlines())
         print(text+': {}'.format(size-1))
-
-
 
 def save_mapping(output_file, dic):
     writer = open(output_file, 'w', encoding='utf-8')
@@ -32,19 +31,20 @@ if __name__ == '__main__':
     relation2idx = dict()
     user_pos_ratings = dict()
     user_neg_ratings = dict()
+    
 
-    user_file = './data/ml-100k/ml-100k.user'
-    item_file = './data/ml-100k/ml-100k.item'
-    link_file = './data/ml-100k/ml-100k.link'
-    inter_file = './data/ml-100k/ml-100k.inter'
-    kg_file = './data/ml-100k/ml-100k.kg'
+    user_file = PATH+ 'ml-100k.user'
+    item_file = PATH+ 'ml-100k.item'
+    link_file = PATH+ 'ml-100k.link'
+    inter_file = PATH+ 'ml-100k.inter'
+    kg_file = PATH+ 'ml-100k.kg'
 
-    output_file = './data/ml-100k/ratings_final.txt'
-    kg_output_file = './data/ml-100k/kg_final.txt'
-    user2idx_file = './data/ml-100k/user2idx.txt'
-    entity2idx_file = './data/ml-100k/entity2idx.txt'
-    relation2idx_file = './data/ml-100k/relation2idx.txt'
-    item2idx_file = './data/ml-100k/item2idx.txt'
+    output_file = PATH+ 'ratings_final.txt'
+    kg_output_file = PATH+ 'kg_final.txt'
+    user2idx_file = PATH+ 'user2idx.txt'
+    entity2idx_file = PATH+ 'entity2idx.txt'
+    relation2idx_file = PATH+ 'relation2idx.txt'
+    item2idx_file = PATH+ 'item2idx.txt'
 
     ### ------------------------------------------- ###
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     ### ------------------------------------------- ###
     # deal with link file for align entity with item
-    i = 0
+    i = 1
     for line in open(link_file, encoding='utf-8').readlines()[1:]:
         item = line.strip().split('\t')[0]
         entity = line.strip().split('\t')[1]
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     print('-------------------------------------')
     print('converting kg file ...')
     entity_cnt = len(entity2idx)
-    relation_cnt = 0
+    relation_cnt = 1
 
     writer = open(kg_output_file, 'w', encoding='utf-8')
 

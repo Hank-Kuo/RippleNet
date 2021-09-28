@@ -8,15 +8,16 @@ from torch.utils import tensorboard
 # nowTime = str(datetime.datetime.now())
 
 class Tensorboard:
-    def __init__(self, log_dir, history=False):
-        if history:
-            self.delete_history(log_dir)
-        self.server = TensorboardServer(log_dir)
-        self.server.start()
-        print("Started Tensorboard Server")
-        self.chrome = ChromeProcess()
-        print("Started Chrome Browser")
-        self.chrome.start()
+    def __init__(self, log_dir, open=True):
+        self.log_dir = log_dir
+        if open == True:
+            self.server = TensorboardServer(log_dir)
+            self.server.start()
+            print("Started Tensorboard Server")
+            self.chrome = ChromeProcess()
+            print("Started Chrome Browser")
+            self.chrome.start()
+        
 
     def create_writer(self):
         summary_writer = tensorboard.SummaryWriter(log_dir=self.log_dir)

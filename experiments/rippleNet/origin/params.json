@@ -5,7 +5,6 @@
     
     "dim": 16,
     "n_hop": 2,
-    "n_memory": 32,
     "l2_weight": 1e-7,
     "kge_weight": 0.01,
      

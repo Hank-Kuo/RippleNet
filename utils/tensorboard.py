@@ -1,15 +1,13 @@
 import os 
 import sys
-# import datetime 
 from multiprocessing import Process
 
 from torch.utils import tensorboard
 
-# nowTime = str(datetime.datetime.now())
-
 class Tensorboard:
     def __init__(self, log_dir, open=True):
         self.log_dir = log_dir
+        self.open = open
         if open == True:
             self.server = TensorboardServer(log_dir)
             self.server.start()
@@ -31,11 +29,11 @@ class Tensorboard:
                     os.remove(file_path)
 
     def finalize(self):
-        if self.server.is_alive():
-            print('Killing Tensorboard Server')
-            self.server.terminate()
-            self.server.join()
-        # As a preference, we leave chrome open - but this may be amended similar to the method above
+        if open == True:
+            if self.server.is_alive():
+                print('Killing Tensorboard Server')
+                self.server.terminate()
+                self.server.join()
 
 class TensorboardServer(Process):
     def __init__(self, log_dir):

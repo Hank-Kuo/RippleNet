@@ -17,7 +17,7 @@ from torch.utils import data as torch_data
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
-parser.add_argument("--model_dir", default="./experiments/base_model", help="Path to model checkpoint (by default train from scratch).")
+parser.add_argument("--model_dir", default="./experiments/rippleNet-movie/base_model", help="Path to model checkpoint (by default train from scratch).")
 
 def main():
     args = parser.parse_args()
@@ -53,7 +53,7 @@ def main():
     
     # model
     print("===> Building model")
-    model = net.RippleNet(params, n_entity, n_relation)
+    model = net.RippleNet(params)
     
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)

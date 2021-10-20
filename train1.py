@@ -18,7 +18,39 @@ from torch.utils import data as torch_data
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
 parser.add_argument("--model_dir", default="./experiments/rippleNet-movie/base_model", help="Path to model checkpoint (by default train from scratch).")
-parser.add_argument("--model_type", default="base", help="Path to model checkpoint (by default train from scratch).")
+parser.add_argument("--model_type", default="base_model", help="Path to model checkpoint (by default train from scratch).")
+
+
+def get_model(params, model_type):
+    model = {
+        'base_model': net.RippleNet(params),
+        'basic_model': net.RippleNet_basic(params),
+        'plus_model': net.RippleNet_plus(params),
+        'plus2_model': net.RippleNet_plus2(params),
+        'replace_model': net.RippleNet_replace(params),
+
+        'head0_plus2_model': net.RippleNet_head0_plus2(params),
+        'head1_plus2_model': net.RippleNet_head1_plus2(params),
+        'head2_plus2_model': net.RippleNet_head2_plus2(params),
+
+        'head0_replace_model': net.RippleNet_head0_replace(params),
+        'head1_replace_model': net.RippleNet_head1_replace(params),
+        'head2_replace_model': net.RippleNet_head2_replace(params),
+
+        'head0_att_plus2_model': net.RippleNet_head0_att_plus2(params),
+        'head1_att_plus2_model': net.RippleNet_head1_att_plus2(params),
+        'head2_att_plus2_model': net.RippleNet_head2_att_plus2(params),
+        'head2_att_plus2_model_1':net.RippleNet_head2_att_plus2_1(params),
+
+        'head0_att_replace_model': net.RippleNet_head0_att_replace(params),
+        'head1_att_replace_model': net.RippleNet_head1_att_replace(params),
+        'head2_att_replace_model':  net.RippleNet_head2_att_replace(params),
+        'head2_att_replace_model_1':  net.RippleNet_head2_att_replace_1(params),
+      
+        'head2_att_replace_model_1_gamma':  net.RippleNet_head2_att_replace_1_gamma(params),
+    }
+    return model[model_type]
+    
 
 def main():
     args = parser.parse_args()
@@ -54,7 +86,7 @@ def main():
     
     # model
     print("===> Building model")
-    model = net.RippleNet(params)
+    model = get_model(params, args.model_type)
     
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)

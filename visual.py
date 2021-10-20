@@ -5,35 +5,16 @@ import model.net as net
 import model.data_loader as data_loader
 import utils.load_data as load_data
 import utils.utils as utils
+import utils.graph as graph
 
 import numpy as np
 import torch
 from torch.utils import data as torch_data
 
-
-def evaluation(params, model, data_generator):
-    auc_list = []
-    acc_list = []
-    f1_list = []
-    model.eval()
-    for items, labels, memories_h, memories_r,memories_t in data_generator:
-        items = items.to(params.device)
-        labels = labels.to(params.device)
-        memories_h = memories_h.permute(1, 0, 2).to(params.device)
-        memories_r = memories_r.permute(1, 0, 2).to(params.device)
-        memories_t = memories_t.permute(1, 0, 2).to(params.device)
-        auc, acc, f1 = model.evaluate(items, labels, memories_h, memories_r, memories_t)
-        auc_list.append(auc)
-        acc_list.append(acc)
-        f1_list.append(f1)
-    
-    metrics_mean = {'auc': float(np.mean(auc_list)), 'acc': float(np.mean(acc_list)), 'f1':float(np.mean(f1_list)) }
-    return metrics_mean
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
-parser.add_argument("--model_dir", default="./experiments/rippleNet-movie/plus_model", help="Path to model checkpoint (by default train from scratch).")
-parser.add_argument("--model_type", default="plus_model", help="Path to model checkpoint (by default train from scratch).")
+parser.add_argument("--model_dir", default="./experiments/rippleNet-movie/basic_model", help="Path to model checkpoint (by default train from scratch).")
+parser.add_argument("--model_type", default="visual_model", help="Path to model checkpoint (by default train from scratch).")
 
 def get_model(params, model_type):
     model = {
@@ -44,8 +25,19 @@ def get_model(params, model_type):
         'head0_model': net.RippleNet_head0(params),
         'head1_model': net.RippleNet_head1(params),
         'head2_model': net.RippleNet_head2(params),
+        'visual_model': net.RippleNet_visual(params)
     }
     return model[model_type]
+
+def get_ouput_np(batch, hop, memories_h, memories_r, memories_t, prob_list):
+    head = memories_h[hop][batch]
+    relation = memories_r[hop][batch]
+    tail = memories_t[hop][batch]
+    prob = prob_list[hop][batch]
+    output = torch.stack((head, relation, tail, prob))
+    output_np = output.detach().cpu().numpy()
+    return output_np
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -73,13 +65,41 @@ if __name__ == '__main__':
 
     # data loader
     test_set = data_loader.Dataset(params, test_data, ripple_set)
-    test_generator = torch_data.DataLoader(test_set, batch_size=params.batch_size, drop_last=False)
-    
+    test_generator = torch_data.DataLoader(test_set, batch_size=1024, drop_last=False)
+
     # model
     model = get_model(params, args.model_type)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
     utils.load_checkpoint(checkpoint_dir, model, optimizer)
     best_model = model.to(params.device)
     best_model.eval()
-    test_metrics = evaluation(params, best_model, test_generator)
-    print('Eval: test auc: %.4f  acc: %.4f  f1: %.4f'% (test_metrics['auc'], test_metrics['acc'], test_metrics['f1']))
+
+    items, labels, memories_h, memories_r,memories_t = next(iter(test_generator))
+    items = items.to(params.device)
+    labels = labels.to(params.device)
+    memories_h = memories_h.permute(1, 0, 2).to(params.device)
+    memories_r = memories_r.permute(1, 0, 2).to(params.device)
+    memories_t = memories_t.permute(1, 0, 2).to(params.device)
+    return_dict, prob_list = model(items, labels, memories_h, memories_r, memories_t)
+    
+    batch = 11
+    hop = 0
+    output_np = get_ouput_np(batch, hop, memories_h, memories_r, memories_t, prob_list)
+    output_np_1 = get_ouput_np(batch, hop+1, memories_h, memories_r, memories_t, prob_list)
+
+    g = graph.PrintGraph()
+    color_set = set()
+    for i in range(180):
+        h, r, t, w = output_np[:, i]
+        if h > 0 and t >0 and abs(w)>0.4 :
+            g.add_edge(int(h), int(t), round(w, 4))
+            color_set.add(int(h))
+
+    for i in range(180):
+        h, r, t, w = output_np_1[:, i]
+        if int(h) in g.G.nodes or int(t) in g.G.nodes:
+            if h > 0 and t >0 and abs(w)>0.1:
+                g.add_edge(int(h), int(t), round(w, 4))
+                print('add')
+    g.display(list(color_set))
+        

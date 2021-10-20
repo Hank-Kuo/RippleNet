@@ -31,6 +31,22 @@ tensorboard --logdir=experiments/base_model # port: 6006
 - **Dataset source**: Movielens 100k
 - **Knoweldge graph**: freebase subgraph
 
+
+https://github.com/RUCAIBox/RecSysDatasets/blob/master/conversion_tools/usage/MovieLens-KG.md
+
+git clone https://github.com/RUCAIBox/RecDatasets
+cd RecDatasets/conversion_tools
+wget http://files.grouplens.org/datasets/movielens/ml-1m.zip
+unzip ml-1m.zip -d ml-1m
+python run.py --dataset ml-1m --input_path ml-1m --output_path output_data/ml-1m --convert_inter --convert_item --convert_user
+
+python run.py --dataset ml-100k --input_path ml-100k --output_path output_data/ml-100k --convert_inter --convert_item --convert_user
+
+
+python add_knowledge.py --dataset ml-1m --inter_file output_data/ml-1m/ml-1m.inter --kg_data_path MovieLens-KG --output_path output_data/ml-1m --hop 3
+
+python add_knowledge.py --dataset ml-100k --inter_file output_data/ml-100k/ml-100k.inter --kg_data_path MovieLens-KG --output_path output_data/ml-100k --hop 1
+
 #### Info
 - *.inter file: 
 

@@ -1,9 +1,13 @@
 import collections
+import random
 import os
 import argparse
 import numpy as np
 
-import utils.utils as utils
+import utils as utils
+
+MAX_SAMPLE_TRIPLET = 20
+MAX_HISTORY_ITEM = 10
 
 def load_data(args):
     rating_file = './data/' + args.dataset + '/ratings_final'
@@ -35,9 +39,10 @@ def dataset_split(rating_np):
     train_ratio = 0.6
     test_ratio = 0.2
     n_ratings = rating_np.shape[0]
-    
+    np.random.seed(555)
     train_indices = np.random.choice(n_ratings, size=int(n_ratings * train_ratio), replace=False)
     left = set(range(n_ratings)) - set(train_indices)
+    np.random.seed(555)
     test_indices = np.random.choice(list(left), size=int(n_ratings * test_ratio), replace=False)
     user_history_indices = list(left - set(test_indices))
 
@@ -50,13 +55,15 @@ def dataset_split(rating_np):
         if rating == 1:
             if user not in user_history_dict:
                 user_history_dict[user] = []
-            user_history_dict[user].append(item)
+            if len(user_history_dict[user]) < MAX_HISTORY_ITEM:
+                user_history_dict[user].append(item)
 
     train_indices = [i for i in train_indices if rating_np[i][0] in user_history_dict]
     test_indices = [i for i in test_indices if rating_np[i][0] in user_history_dict]
 
     train_data = rating_np[train_indices]
     test_data = rating_np[test_indices]
+
 
     return train_data, test_data, user_history_dict
 
@@ -89,19 +96,17 @@ def construct_kg(kg_np):
 
 def get_ripple_set(args, kg, user_history_dict):
     print('constructing ripple set ...')
-    max_user_history_item = 0
-    
+    print(user_history_dict[0])
+    max_user_history_item = 0 
     for i in user_history_dict:
         if max_user_history_item < len(user_history_dict[i]):
             max_user_history_item = len(user_history_dict[i])
 
-    # user -> [(hop_0_heads, hop_0_relations, hop_0_tails), (hop_1_heads, hop_1_relations, hop_1_tails), ...]
+    max_user_history_item = max_user_history_item* MAX_SAMPLE_TRIPLET
     ripple_set = collections.defaultdict(list)
     
-
     for user in user_history_dict:
         for h in range(args.n_hop):
-            # np.random.seed(555)
             memories_h = []
             memories_r = []
             memories_t = []
@@ -110,20 +115,23 @@ def get_ripple_set(args, kg, user_history_dict):
                 tails_of_last_hop = user_history_dict[user]
             else:
                 tails_of_last_hop = ripple_set[user][-1][2]
-
+      
             for entity in tails_of_last_hop:
-                for tail_and_relation in kg[entity]:
+                triplets = kg[entity]
+                random.seed(555)
+                if len(triplets) < MAX_SAMPLE_TRIPLET:
+                    sample_triplets = triplets
+                else:
+                    sample_triplets = random.sample(triplets, MAX_SAMPLE_TRIPLET)
+                
+                for tail_and_relation in sample_triplets:
                     memories_h.append(entity)
                     memories_r.append(tail_and_relation[1])
                     memories_t.append(tail_and_relation[0])
 
-            # if the current ripple set of the given user is empty, we simply copy the ripple set of the last hop here
-            # this won't happen for h = 0, because only the items that appear in the KG have been selected
-            # this only happens on 154 users in Book-Crossing dataset (since both BX dataset and the KG are sparse)
             if len(memories_h) == 0:
-                ripple_set[user].append(ripple_set[user][-1])
+                ripple_set[user].append([[0]*max_user_history_item, [0]*max_user_history_item,[0]*max_user_history_item])
             else:
-                # sample a fixed-size 1-hop memory for each user
                 '''
                 # duplicate sampling 
                 replace = len(memories_h) < args.n_memory
@@ -134,13 +142,15 @@ def get_ripple_set(args, kg, user_history_dict):
                 
                 ripple_set[user].append((memories_h, memories_r, memories_t))
                 ''' 
+                
                 # padding sampling
+    
                 replace = len(memories_h) > max_user_history_item
+                np.random.seed(555)
                 if replace == True:
                     indices = np.random.choice(len(memories_h), size=max_user_history_item, replace=False)
                 else:
                     indices = np.random.choice(len(memories_h), size=len(memories_h), replace=False)
-                
                 # padding 
                 l = max(0, max_user_history_item - len(memories_h))
                 memories_h = [memories_h[i] for i in indices] + [0]*l
@@ -155,8 +165,7 @@ def get_ripple_set(args, kg, user_history_dict):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
-parser.add_argument("--model_dir", default="./experiments/rippleNet/sampling", help="Path to model checkpoint (by default train from scratch).")    
-
+parser.add_argument("--model_dir", default="../experiments/rippleNet/sampling", help="Path to model checkpoint (by default train from scratch).")    
 
 if __name__ == '__main__':
     args = parser.parse_args()

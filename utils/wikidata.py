@@ -58,7 +58,7 @@ def find_wikidata_id(name, limit=1, session=None):
     except Exception as e:
         # TODO: distinguish between connection error and entity not found
         # logger.error("ENTITY NOT FOUND")
-        return "entityNotFound"
+        return "entityNotFound", "entityNotFound"
 
     params = dict(
         action="query",
@@ -73,16 +73,17 @@ def find_wikidata_id(name, limit=1, session=None):
         entity_id = response.json()["query"]["pages"][str(page_id)]["pageprops"][
             "wikibase_item"
         ]
+        entity_name = response.json()["query"]["pages"][str(page_id)]["title"]
     except Exception as e:
         # TODO: distinguish between connection error and entity not found
         # logger.error("ENTITY NOT FOUND")
-        return "entityNotFound"
+        return "entityNotFound", "entityNotFound"
 
-    return entity_id
+    return entity_id, entity_name
 
 
 @retry(wait_random_min=1000, wait_random_max=5000, stop_max_attempt_number=5)
-def query_entity_links(entity_id, session=None):
+def query_entity_links(entity_id, limit=500, session=None):
     """Query all linked pages from a wikidata entityID
     Args:
         entity_id (str): A wikidata entity ID
@@ -118,8 +119,8 @@ def query_entity_links(entity_id, session=None):
         FILTER (lang(?propLabel) = 'en' )
     }
     ORDER BY ?propUrl ?valUrl
-    LIMIT 500
-    """
+    LIMIT 
+    """+str(limit)
     )
 
     session = get_session(session=session)
@@ -205,7 +206,7 @@ def search_wikidata(names, extras=None, describe=True, verbose=False):
 
     results = []
     for idx, name in enumerate(names):
-        entity_id = find_wikidata_id(name)
+        entity_id, entity_name = find_wikidata_id(name)
         if verbose:
             print("name: {name}, entity_id: {id}".format(name=name, id=entity_id))
 
@@ -240,7 +241,7 @@ if __name__ == '__main__':
     notFound = []
     for idx, name in enumerate(names):
         # first get the wikipedia entity_id for each name
-        entity_id = find_wikidata_id(name)
+        entity_id, entity_name = find_wikidata_id(name)
         if entity_id == "entityNotFound":
             notFound.append(name)
             continue

@@ -11,6 +11,7 @@ _MODEL_STATE_DICT = "model_state_dict"
 _OPTIMIZER_STATE_DICT = "optimizer_state_dict"
 _EPOCH = "epoch"
 _BEST_SCORE = "best_score"
+_STEP='step'
 
 class Params():
     def __init__(self, json_path):
@@ -62,13 +63,14 @@ def load_checkpoint(checkpoint_dir: str, model: nn.Module, optim: optimizer.Opti
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint[_MODEL_STATE_DICT])
     optim.load_state_dict(checkpoint[_OPTIMIZER_STATE_DICT])
+
     start_epoch_id = checkpoint[_EPOCH] + 1
-    
     best_score = checkpoint[_BEST_SCORE]
-    return start_epoch_id, best_score
+    step = checkpoint[_STEP]
+    return start_epoch_id, step, best_score
 
 
-def save_checkpoint(checkpoint_dir: str, model: nn.Module, optim: optimizer.Optimizer, epoch_id: int, best_score: float):
+def save_checkpoint(checkpoint_dir: str, model: nn.Module, optim: optimizer.Optimizer, epoch_id: int, step, best_score: float):
     if not os.path.exists(checkpoint_dir):
         os.mkdir(checkpoint_dir)
 
@@ -78,6 +80,7 @@ def save_checkpoint(checkpoint_dir: str, model: nn.Module, optim: optimizer.Opti
         _MODEL_STATE_DICT: model.state_dict(),
         _OPTIMIZER_STATE_DICT: optim.state_dict(),
         _EPOCH: epoch_id,
+        _STEP: step, 
         _BEST_SCORE: best_score
     }, checkpoint_path)
 

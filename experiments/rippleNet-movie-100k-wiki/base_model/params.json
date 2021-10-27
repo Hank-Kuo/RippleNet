@@ -1,5 +1,5 @@
 {
-    "dataset": "movie",
+    "dataset": "ml-100k",
     "learning_rate": 0.02,
     "batch_size": 1024,
     
@@ -7,9 +7,8 @@
     "n_hop": 2,
     "l2_weight": 1e-7,
     "kge_weight": 0.01,
-    "gamma": 0,
      
-    "epochs": 10,
+    "epochs": 20,
     "valid_every": 1,
     "patience": 5
 }

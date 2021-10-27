@@ -18,7 +18,31 @@ from torch.utils import data as torch_data
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
 parser.add_argument("--model_dir", default="./experiments/rippleNet-movie/base_model", help="Path to model checkpoint (by default train from scratch).")
-parser.add_argument("--model_type", default="base", help="Path to model checkpoint (by default train from scratch).")
+parser.add_argument("--model_type", default="base_model", help="Path to model checkpoint (by default train from scratch).")
+parser.add_argument("--restore", default=None, help="Optional, name of the file in --model_dir containing weights to reload before training")
+
+
+def get_model(params, model_type):
+    model = {
+        'base_model': net.RippleNet(params),
+        
+        'replace_model': net.RippleNet_replace(params),
+        'plus_model': net.RippleNet_plus(params),
+        'plus2_model': net.RippleNet_plus2(params),
+        'item_model': net.RippleNet_item(params),
+
+        'head1_replace_model': net.RippleNet_head1_replace(params),
+        'head2_replace_model': net.RippleNet_head2_replace(params),
+        'head3_replace_model': net.RippleNet_head3_replace(params),
+        
+        'head0_att_replace_gamma_model':  net.RippleNet_head0_att_replace_gamma(params),
+        'head1_att_replace_gamma_model':  net.RippleNet_head1_att_replace_gamma(params),
+        'head2_att_replace_gamma_model':  net.RippleNet_head2_att_replace_gamma(params),
+        'head01_att_replace_gamma_model':  net.RippleNet_head01_att_replace_gamma(params),
+        'head012_att_replace_gamma_model':  net.RippleNet_head012_att_replace_gamma(params),
+    }
+    return model[model_type]
+    
 
 def main():
     args = parser.parse_args()
@@ -54,15 +78,21 @@ def main():
     
     # model
     print("===> Building model")
-    model = net.RippleNet(params)
+
+    model = get_model(params, args.model_type)
     
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
     tb = tensorboard.Tensorboard(args.model_dir, False)
     writer = tb.create_writer()
+    
     start_epoch_id = 1
     step = 0
     best_score = 0.0
+
+    if args.restore is not None:
+        print('Restore checkpoint...')
+        start_epoch_id, step, best_score = utils.load_checkpoint(checkpoint_dir, model, optimizer)
 
     logging.info("Number of Entity: {}, Number of Relation: {}, User History item: {}".format(n_entity, n_relation, max_user_history_item))
     logging.info("Training Dataset: {}, Test Dataset: {}".format(len(train_set), len(test_set)))
@@ -110,16 +140,16 @@ def main():
             test_metrics = evaluation(params, model, test_generator)
             logging.info('- Eval: test auc: %.4f  acc: %.4f  f1: %.4f'% (test_metrics['auc'], test_metrics['acc'], test_metrics['f1']))
             
-            writer.add_scalar('Accuracy/test/AUC', test_metrics['auc'] , global_step=step)
-            writer.add_scalar('Accuracy/test/ACC', test_metrics['acc'] , global_step=step)
-            writer.add_scalar('Accuracy/test/F1', test_metrics['f1'] , global_step=step)
+            writer.add_scalar('Accuracy/test/AUC', test_metrics['auc'] , global_step=epoch_id)
+            writer.add_scalar('Accuracy/test/ACC', test_metrics['acc'] , global_step=epoch_id)
+            writer.add_scalar('Accuracy/test/F1', test_metrics['f1'] , global_step=epoch_id)
             
             score = test_metrics['auc']
             if score > best_score:
                 best_score = score   
                 test_metrics['epoch'] = epoch_id   
                        
-                utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, best_score)
+                utils.save_checkpoint(checkpoint_dir, model, optimizer, epoch_id, step, best_score)
                 utils.save_dict_to_json(test_metrics, test_best_json_path)
                     
     tb.finalize()

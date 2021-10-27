@@ -7,6 +7,7 @@
     "n_hop": 2,
     "l2_weight": 1e-7,
     "kge_weight": 0.01,
+    "gamma": 1.25,
      
     "epochs": 10,
     "valid_every": 1,

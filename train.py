@@ -27,19 +27,30 @@ def get_model(params, model_type):
         'base_model': net.RippleNet(params),
         
         'replace_model': net.RippleNet_replace(params),
+        'replace2_model': net.RippleNet_replace2(params),
         'plus_model': net.RippleNet_plus(params),
         'plus2_model': net.RippleNet_plus2(params),
         'item_model': net.RippleNet_item(params),
 
+        'head0_replace_model': net.RippleNet_head0_replace(params),  
         'head1_replace_model': net.RippleNet_head1_replace(params),
         'head2_replace_model': net.RippleNet_head2_replace(params),
         'head3_replace_model': net.RippleNet_head3_replace(params),
+        'head4_replace_model': net.RippleNet_head4_replace(params),   
+        'head01_replace_model': net.RippleNet_head01_replace(params),     
+        'head012_replace_model': net.RippleNet_head012_replace(params),     
+        'head0123_replace_model': net.RippleNet_head0123_replace(params),     
+        'head01234_replace_model': net.RippleNet_head01234_replace(params), 
         
-        'head0_att_replace_gamma_model':  net.RippleNet_head0_att_replace_gamma(params),
-        'head1_att_replace_gamma_model':  net.RippleNet_head1_att_replace_gamma(params),
-        'head2_att_replace_gamma_model':  net.RippleNet_head2_att_replace_gamma(params),
-        'head01_att_replace_gamma_model':  net.RippleNet_head01_att_replace_gamma(params),
-        'head012_att_replace_gamma_model':  net.RippleNet_head012_att_replace_gamma(params),
+        'head01234_replace2_model': net.RippleNet_head01234_replace2(params),     
+        'head01234_plus_model': net.RippleNet_head01234_plus(params),
+        'head01234_plus2_model': net.RippleNet_head01234_plus2(params),
+        'head01234_plus_item_model': net.RippleNet_head01234_plus_item(params),
+        'head01234_base_model': net.RippleNet_head01234_base(params),
+
+        'head012_replace_ouptutCosine_model':net.RippleNet_head012_replace_ouptutCosine(params),
+        'head012_replace_cosine_model':net.RippleNet_head012_replace_cosine(params),
+        
     }
     return model[model_type]
     
@@ -50,6 +61,8 @@ def main():
     # torch setting
     np.random.seed(args.seed)
     torch.random.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
@@ -109,7 +122,7 @@ def main():
         model.train()
 
         with tqdm(total=len(train_generator)) as t:
-            for items, labels, memories_h, memories_r,memories_t in train_generator:
+            for users, items, labels, memories_h, memories_r,memories_t in train_generator:
                 items = items.to(params.device)
                 labels = labels.to(params.device)
                 memories_h = memories_h.permute(1, 0, 2).to(params.device)

@@ -21,4 +21,4 @@ class Dataset(torch_data.Dataset):
             memories_h.append(self.ripple_set[user][i][0])
             memories_r.append(self.ripple_set[user][i][1])
             memories_t.append(self.ripple_set[user][i][2])
-        return items, labels, torch.LongTensor(memories_h), torch.LongTensor(memories_r), torch.LongTensor(memories_t)
+        return user, items, labels, torch.LongTensor(memories_h), torch.LongTensor(memories_r), torch.LongTensor(memories_t)

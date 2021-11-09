@@ -6,9 +6,9 @@ from tqdm import tqdm
 
 import wikidata as wikidata
 
-PATH = '../data/movie-100k-wiki/'
-HOP = 1
-DATASET_NAME = '100k'
+PATH = '../data/movie-1m-wiki/'
+HOP = 3
+DATASET_NAME = '1m'
 
 def get_movielens(item_file, user_file, rating_file):
     from rs_datasets import MovieLens
@@ -28,6 +28,20 @@ def get_movielens(item_file, user_file, rating_file):
     user_df.to_csv(user_file, sep='\t', index=False)
     item_df.to_csv(item_file, sep='\t', index=False)
     rating_df.to_csv(rating_file, sep='\t', index=False)
+
+def get_book(item_file, user_file, rating_file):
+    from rs_datasets import BookCrossing
+    bx = BookCrossing()
+    rating_df = bx.ratings
+    user_df = bx.users
+    item_df = bx.items
+
+    item_df = item_df.drop_duplicates(subset=['title'])
+    item_df = item_df[['item_id', 'title']]
+  
+    user_df.to_csv(user_file, sep='\t', index=False)
+    rating_df.to_csv(rating_file, sep='\t', index=False)
+    item_df.to_csv(item_file, sep='\t', index=False)
 
 
 def get_item_list(file):
@@ -61,12 +75,12 @@ def process_link(link_output, item_list):
     return total_item_entity, notFound
 
 def cover_link_file(link_file, link_output):
-    link_writer = open(link_output, "r", encoding='utf-8')
+    link_writer = open(link_output, "w", encoding='utf-8')
     link_writer.write('%s\t%s\n' % ('item_id', 'entity_id'))
 
     for line in open(link_file, encoding='utf-8').readlines()[1:]:
         item = line.strip().split('\t')[0]
-        entity = line.strip().split('\t')[2]
+        entity = line.strip().split('\t')[2]    
         link_writer.write('%s\t%s\n' % (item, entity))
 
 def process_kg(kg_output, kg_full_output, item_entity_list):
@@ -76,17 +90,19 @@ def process_kg(kg_output, kg_full_output, item_entity_list):
     kg_full_writer.write('%s\t%s\t%s\t%s\t%s\t%s\n' % ('head', 'head_name', 'relation', 'relation_name', 'tail', 'tail_name'))
 
     triple_ctx = 0
+    triple_ctx_list = [0, triple_ctx]
     entities_list = [item_entity_list]
-
-    for h in range(HOP+1):
+    enitty_set = set()
+    for h in range(HOP):
         LIMIT = 20
+    
         if h ==0:
             LIMIT = 500
-        print('Hop: {}, length: {}'.format(h, len(entities_list)))
+        print('Hop: {}, length: {}, triple:{}'.format(h, len(entities_list), triple_ctx_list[-1] -triple_ctx_list[-2] ))
         temp = []  
         not_find = []
         for idx, entities in enumerate(tqdm(entities_list[-1])):
-            
+            enitty_set.add(entities[0])
             json_links = wikidata.query_entity_links(entities[0], limit=LIMIT)
             related_links = wikidata.read_linked_entities(json_links)
 
@@ -102,19 +118,23 @@ def process_kg(kg_output, kg_full_output, item_entity_list):
                     tail=related_entity,
                     tail_name=related_name,
                 )
-                temp.append([related_entity, related_name])
+                if related_entity not in enitty_set:
+                    temp.append([related_entity, related_name])
                 triple_ctx +=1 
                 kg_writer.write('%s\t%s\t%s\n' % (entities[0], relation, related_entity))
                 kg_full_writer.write('%s\t%s\t%s\t%s\t%s\t%s\n' % (entities[0], entities[1], relation, relation_name, related_entity, related_name))
           
         entities_list.append(temp) 
-        print(not_find)
+        triple_ctx_list.append(triple_ctx)
+        
+        if h==0:
+            print(not_find)
     print('TOTAL TRIPLES: {}'.format(triple_ctx))
 
 if __name__ == '__main__':
     user_file = PATH + 'movie.user'
     item_file = PATH + 'movie.item'
-    rating_file PATH + 'movie.inter'
+    rating_file= PATH + 'movie.inter'
     link_output = PATH + 'movie.link'
     kg_output = PATH + 'movie.kg'
     full_link_output = PATH + 'movie-full.link'
@@ -125,16 +145,19 @@ if __name__ == '__main__':
     print('Download dataset...')
     get_movielens(item_file, user_file, rating_file)
     '''
+    '''
     # get all item 
     item_list = get_item_list(item_file)
-    '''
+
     # align item to entity 
     print('align item to entity...')
     total_item_entity, notFound = process_link(full_link_output, item_list)
     print('NOT FOUND: {}'.format(len(notFound)))
     print(notFound)
-    cover_link_file(full_link_output, link_output)
     '''
+    cover_link_file(full_link_output, link_output)
+    
+    
     total_item_entity = []
     for line in open(full_link_output, encoding='utf-8').readlines():
         item = line.strip().split('\t')[0]
@@ -145,4 +168,4 @@ if __name__ == '__main__':
     
     print('find relative triples...')
     process_kg(kg_output, kg_full_output, total_item_entity)
-    
+    ''''''

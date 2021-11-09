@@ -1,5 +1,6 @@
 import os
 import argparse
+import collections
 
 import model.net as net
 import model.data_loader as data_loader
@@ -9,6 +10,8 @@ import utils.utils as utils
 import numpy as np
 import torch
 from torch.utils import data as torch_data
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import f1_score
 
 
 def evaluation(params, model, data_generator):
@@ -16,19 +19,30 @@ def evaluation(params, model, data_generator):
     acc_list = []
     f1_list = []
     model.eval()
-    for items, labels, memories_h, memories_r,memories_t in data_generator:
+
+    for users, items, labels, memories_h, memories_r,memories_t in data_generator:
+
         items = items.to(params.device)
         labels = labels.to(params.device)
         memories_h = memories_h.permute(1, 0, 2).to(params.device)
         memories_r = memories_r.permute(1, 0, 2).to(params.device)
         memories_t = memories_t.permute(1, 0, 2).to(params.device)
-        auc, acc, f1 = model.evaluate(items, labels, memories_h, memories_r, memories_t)
+        
+        return_dict = model(items, labels, memories_h, memories_r, memories_t)
+        scores = return_dict["scores"].detach().cpu().numpy()
+        labels = labels.cpu().numpy()
+        auc = roc_auc_score(y_true=labels, y_score=scores)
+        predictions = [1 if i >= 0.5 else 0 for i in scores]
+        acc = np.mean(np.equal(predictions, labels))
+        f1 = f1_score(labels, predictions)
+
         auc_list.append(auc)
         acc_list.append(acc)
         f1_list.append(f1)
     
     metrics_mean = {'auc': float(np.mean(auc_list)), 'acc': float(np.mean(acc_list)), 'f1':float(np.mean(f1_list)) }
     return metrics_mean
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")

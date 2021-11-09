@@ -6,7 +6,7 @@ import numpy as np
 
 import utils as utils
 
-MAX_SAMPLE_TRIPLET = 20
+MAX_SAMPLE_TRIPLET = 15
 MAX_HISTORY_ITEM = 10
 
 def load_data(args):
@@ -16,7 +16,7 @@ def load_data(args):
     train_data, test_data, user_history_dict = load_rating(args, rating_file)
     n_entity, n_relation, kg = load_kg(args, kg_file)
     max_user_history_item, ripple_set = get_ripple_set(args, kg, user_history_dict)
-    
+
     return train_data, test_data, n_entity, n_relation, max_user_history_item, ripple_set
 
 
@@ -96,32 +96,34 @@ def construct_kg(kg_np):
 
 def get_ripple_set(args, kg, user_history_dict):
     print('constructing ripple set ...')
-    print(user_history_dict[0])
-    max_user_history_item = 0 
-    for i in user_history_dict:
-        if max_user_history_item < len(user_history_dict[i]):
-            max_user_history_item = len(user_history_dict[i])
-
-    max_user_history_item = max_user_history_item* MAX_SAMPLE_TRIPLET
+    print(user_history_dict[1])
+  
+    max_user_history_item = MAX_HISTORY_ITEM* MAX_SAMPLE_TRIPLET
     ripple_set = collections.defaultdict(list)
     
     for user in user_history_dict:
+        temp_set = set()
         for h in range(args.n_hop):
             memories_h = []
             memories_r = []
             memories_t = []
-
+            
+            # find seed to search graph
             if h == 0:
                 tails_of_last_hop = user_history_dict[user]
+                temp_set = set(tails_of_last_hop)
             else:
-                tails_of_last_hop = ripple_set[user][-1][2]
-      
+                tails_of_last_hop = list(set(ripple_set[user][-1][2]) - temp_set)
+                temp_set = set.union(temp_set, set(ripple_set[user][-1][2]))
+                # tails_of_last_hop = ripple_set[user][-1][2]
+
+            # search graph
             for entity in tails_of_last_hop:
                 triplets = kg[entity]
-                random.seed(555)
                 if len(triplets) < MAX_SAMPLE_TRIPLET:
                     sample_triplets = triplets
                 else:
+                    random.seed(555)
                     sample_triplets = random.sample(triplets, MAX_SAMPLE_TRIPLET)
                 
                 for tail_and_relation in sample_triplets:
@@ -129,27 +131,17 @@ def get_ripple_set(args, kg, user_history_dict):
                     memories_r.append(tail_and_relation[1])
                     memories_t.append(tail_and_relation[0])
 
+            # sampling
             if len(memories_h) == 0:
                 ripple_set[user].append([[0]*max_user_history_item, [0]*max_user_history_item,[0]*max_user_history_item])
-            else:
-                '''
-                # duplicate sampling 
-                replace = len(memories_h) < args.n_memory
-                indices = np.random.choice(len(memories_h), size=args.n_memory, replace=replace)
-                memories_h = [memories_h[i] for i in indices]
-                memories_r = [memories_r[i] for i in indices]
-                memories_t = [memories_t[i] for i in indices]
-                
-                ripple_set[user].append((memories_h, memories_r, memories_t))
-                ''' 
-                
+            else:    
                 # padding sampling
-    
                 replace = len(memories_h) > max_user_history_item
-                np.random.seed(555)
                 if replace == True:
+                    np.random.seed(555)
                     indices = np.random.choice(len(memories_h), size=max_user_history_item, replace=False)
                 else:
+                    np.random.seed(555)
                     indices = np.random.choice(len(memories_h), size=len(memories_h), replace=False)
                 # padding 
                 l = max(0, max_user_history_item - len(memories_h))
@@ -165,7 +157,7 @@ def get_ripple_set(args, kg, user_history_dict):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", default=555, help="Seed value.")
-parser.add_argument("--model_dir", default="../experiments/rippleNet/sampling", help="Path to model checkpoint (by default train from scratch).")    
+parser.add_argument("--model_dir", default="../experiments/rippleNet/base_model", help="Path to model checkpoint (by default train from scratch).")    
 
 if __name__ == '__main__':
     args = parser.parse_args()

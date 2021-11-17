@@ -8,7 +8,7 @@ ouptut: output.txt, kg_final.txt, user2idx.txt, entity2id.txt, relation2idx.txt,
     kg_final.txt: h r t
 '''
 
-PATH = '../data/movie-1m-wiki/'
+PATH = '../data/movie-100k-wiki/'
 THRESHOLD = 4 
 
 def count_line(file, text):

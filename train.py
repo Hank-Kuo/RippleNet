@@ -31,6 +31,7 @@ def get_model(params, model_type):
         'plus_model': net.RippleNet_plus(params),
         'plus2_model': net.RippleNet_plus2(params),
         'item_model': net.RippleNet_item(params),
+        'replace_noKGLoss_model':net.RippleNet_replace_no_kgLoss(params),
 
         'head0_replace_model': net.RippleNet_head0_replace(params),  
         'head1_replace_model': net.RippleNet_head1_replace(params),
@@ -41,12 +42,6 @@ def get_model(params, model_type):
         'head012_replace_model': net.RippleNet_head012_replace(params),     
         'head0123_replace_model': net.RippleNet_head0123_replace(params),     
         'head01234_replace_model': net.RippleNet_head01234_replace(params), 
-        
-        'head01234_replace2_model': net.RippleNet_head01234_replace2(params),     
-        'head01234_plus_model': net.RippleNet_head01234_plus(params),
-        'head01234_plus2_model': net.RippleNet_head01234_plus2(params),
-        'head01234_plus_item_model': net.RippleNet_head01234_plus_item(params),
-        'head01234_base_model': net.RippleNet_head01234_base(params),
 
         'head012_replace_ouptutCosine_model':net.RippleNet_head012_replace_ouptutCosine(params),
         'head012_replace_cosine_model':net.RippleNet_head012_replace_cosine(params),

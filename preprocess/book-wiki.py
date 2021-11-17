@@ -8,8 +8,8 @@ ouptut: output.txt, kg_final.txt, user2idx.txt, entity2id.txt, relation2idx.txt,
     kg_final.txt: h r t
 '''
 
-PATH = '../data/ml-100k/'
-THRESHOLD = 4 
+PATH = '../data/book-wiki/'
+THRESHOLD = 1
 
 def count_line(file, text):
     with open(file, 'r', encoding='utf-8') as fp:
@@ -33,11 +33,11 @@ if __name__ == '__main__':
     user_neg_ratings = dict()
     
 
-    user_file = PATH+ 'ml-100k.user'
-    item_file = PATH+ 'ml-100k.item'
-    link_file = PATH+ 'ml-100k.link'
-    inter_file = PATH+ 'ml-100k.inter'
-    kg_file = PATH+ 'ml-100k.kg'
+    user_file = PATH+ 'book.user'
+    item_file = PATH+ 'book.item'
+    link_file = PATH+ 'book.link'
+    inter_file = PATH+ 'book.inter'
+    kg_file = PATH+ 'book.kg'
 
     output_file = PATH+ 'ratings_final.txt'
     kg_output_file = PATH+ 'kg_final.txt'

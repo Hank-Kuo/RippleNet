@@ -3,11 +3,13 @@ import random
 import os
 import argparse
 import numpy as np
+from numpy import linalg as LA
+import json
 
-import utils as utils
+import utils.utils as utils
 
-MAX_SAMPLE_TRIPLET = 15
-MAX_HISTORY_ITEM = 10
+MAX_SAMPLE_TRIPLET =10#15
+MAX_HISTORY_ITEM = 10#10
 
 def load_data(args):
     rating_file = './data/' + args.dataset + '/ratings_final'
@@ -67,6 +69,7 @@ def dataset_split(rating_np):
 
     return train_data, test_data, user_history_dict
 
+
 def load_kg(args, kg_file):
     print('reading KG file ...')
 
@@ -84,6 +87,7 @@ def load_kg(args, kg_file):
 
     return n_entity, n_relation, kg
 
+
 def construct_kg(kg_np):
     print('constructing knowledge graph ...')
     kg = collections.defaultdict(list)
@@ -91,10 +95,19 @@ def construct_kg(kg_np):
         kg[head].append((tail, relation))
     return kg
 
+def load_weight():
+    entity_np = np.load('./data/weight/entity.npy')
+    relation_np = np.load('./data/weight/relation.npy')
+    with open('./data/weight/entity.dict') as f:
+        entity_dict = json.load(f)
+    with open('./data/weight/relation.dict') as f:
+        relation_dict = json.load(f)
+    return entity_np, relation_np, entity_dict, relation_dict
 
 def get_ripple_set(args, kg, user_history_dict):
     print('constructing ripple set ...')
-    print(user_history_dict[1])
+    entity_np, relation_np, entity_dict, relation_dict = load_weight()
+    #print(user_history_dict[1])
   
     max_user_history_item = MAX_HISTORY_ITEM* MAX_SAMPLE_TRIPLET
     ripple_set = collections.defaultdict(list)
@@ -118,16 +131,31 @@ def get_ripple_set(args, kg, user_history_dict):
             # search graph
             for entity in tails_of_last_hop:
                 triplets = kg[entity]
-                if len(triplets) < MAX_SAMPLE_TRIPLET:
-                    sample_triplets = triplets
-                else:
-                    random.seed(555)
-                    sample_triplets = random.sample(triplets, MAX_SAMPLE_TRIPLET)
-                
-                for tail_and_relation in sample_triplets:
-                    memories_h.append(entity)
-                    memories_r.append(tail_and_relation[1])
-                    memories_t.append(tail_and_relation[0])
+                temp = []
+                for index, tail_and_relation in enumerate(triplets):
+                    if str(entity) in entity_dict:
+                        entity_id =  entity_dict[str(entity)]
+                    else:
+                        entity_id = 0
+                    if str(tail_and_relation[0]) in entity_dict:
+                        tail_id = entity_dict[str(tail_and_relation[0])]
+                    else:
+                        tail_id = 0
+                   
+                    if str(tail_and_relation[1]) in relation_dict:
+                        relation_id = relation_dict[str(tail_and_relation[1])]
+                    else:
+                        relation_id = 0
+                   
+                    
+                    score = LA.norm(entity_np[entity_id]+ relation_np[relation_id]-entity_np[tail_id], 1)
+                    temp.append(score)
+                temp_idx = np.argsort(temp)
+                for i, v in enumerate(temp_idx):
+                    if v < MAX_SAMPLE_TRIPLET:
+                        memories_h.append(entity)
+                        memories_r.append(triplets[i][1])
+                        memories_t.append(triplets[i][0])
 
             # sampling
             if len(memories_h) == 0:
@@ -153,18 +181,15 @@ def get_ripple_set(args, kg, user_history_dict):
 
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--seed", default=555, help="Seed value.")
-parser.add_argument("--model_dir", default="../experiments/rippleNet/base_model", help="Path to model checkpoint (by default train from scratch).")    
 
 if __name__ == '__main__':
-    args = parser.parse_args()
+
     
     # torch setting
-    np.random.seed(args.seed)
+    np.random.seed(555)
     
     # os setting
-    params_path = os.path.join(args.model_dir, 'params.json')
+    params_path = os.path.join('./experiments/base_model', 'params.json')
     params = utils.Params(params_path)
 
     train_data, test_data, n_entity, n_relation, max_user_history_item, ripple_set= load_data(params)

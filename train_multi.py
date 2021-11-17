@@ -17,17 +17,6 @@ if __name__ == '__main__':
                 #{'model_dir':'plus_model', 'model':'plus_model', 'restore': None},
                 #{'model_dir':'replace_model', 'model':'replace_model', 'restore': None},
                 #{'model_dir':'item_model', 'model':'item_model', 'restore': None},
-
-                {'model_dir':'hop4_head01234_replace_gamma_0.2_model', 'model':'head01234_replace_model', 'restore': None},
-                {'model_dir':'hop4_head01234_replace_gamma_0.25_model', 'model':'head01234_replace_model', 'restore': None},
-                
-                {'model_dir':'hop4_head01234_replace2_model', 'model':'head01234_replace2_model', 'restore': None},
-                {'model_dir':'hop4_head01234_plus_model', 'model':'head01234_plus_model', 'restore': None},
-                {'model_dir':'hop4_head01234_plus2_model', 'model':'head01234_plus2_model', 'restore': None},
-                {'model_dir':'hop4_head01234_plus_item_model', 'model':'head01234_plus_item_model', 'restore': None},
-                {'model_dir':'hop4_head01234_base_model', 'model':'head01234_base_model', 'restore': None},
-
-
                 '''
                 {'model_dir':'base_model', 'model':'base_model', 'restore': None},
 

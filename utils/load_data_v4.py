@@ -92,10 +92,12 @@ def load_weight():
         relation_dict = json.load(f)
     return entity_np, relation_np, entity_dict, relation_dict
 
+
+
 def get_ripple_set(args, kg, user_history_dict):
     print('constructing ripple set ...')
     entity_np, relation_np, entity_dict, relation_dict = load_weight()
-    
+  
     max_user_history_item = args.history_item* args.sample_triplet
     ripple_set = collections.defaultdict(list)
     
@@ -113,7 +115,9 @@ def get_ripple_set(args, kg, user_history_dict):
             else:
                 tails_of_last_hop = list(set(ripple_set[user][-1][2]) - temp_set)
                 temp_set = set.union(temp_set, set(ripple_set[user][-1][2]))
-
+                
+            temp_score = []
+            
             # search graph
             for entity in tails_of_last_hop:
                 triplets = kg[entity]
@@ -132,14 +136,23 @@ def get_ripple_set(args, kg, user_history_dict):
                         relation_id = relation_dict[str(tail_and_relation[1])]
                     else:
                         relation_id = 0
-                   
                     
-                    score = LA.norm(entity_np[entity_id]+ relation_np[relation_id]-entity_np[tail_id], 1)
-                    temp.append(score)
-
+                    if h ==0:
+                        score = LA.norm(entity_np[entity_id]+ relation_np[relation_id]-entity_np[tail_id], 1)
+                        temp.append(score) 
+                    else:
+                        min_score = float('Inf')
+                        for i in user_history_dict[user]:
+                            entity_id = entity_dict[str(i)]
+                            score = LA.norm(entity_np[entity_id]-entity_np[tail_id], 1)
+                            if min_score > score:
+                                min_score = score
+                        temp.append(min_score) 
+                
                 temp_idx = np.argsort(temp)
                 for i, v in enumerate(temp_idx):
                     if i < args.sample_triplet:
+                        temp_score.append(temp[v])
                         memories_h.append(entity)
                         memories_r.append(triplets[v][1])
                         memories_t.append(triplets[v][0])
@@ -151,8 +164,7 @@ def get_ripple_set(args, kg, user_history_dict):
                 # padding sampling
                 replace = len(memories_h) > max_user_history_item
                 if replace == True:
-                    np.random.seed(555)
-                    indices = np.random.choice(len(memories_h), size=max_user_history_item, replace=False)
+                    indices = np.argsort(temp_score)[:max_user_history_item]
                 else:
                     indices = np.arange(len(memories_h))
                 # padding 

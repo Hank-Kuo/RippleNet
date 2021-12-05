@@ -3,11 +3,8 @@ import random
 import os
 import argparse
 import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
 
 import utils as utils
-
 
 def load_data(args):
     rating_file = './data/' + args.dataset + '/ratings_final'
@@ -29,29 +26,41 @@ def load_rating(args, rating_file):
     else:
         rating_np = np.loadtxt(rating_file + '.txt', dtype=np.int32)
         np.save(rating_file + '.npy', rating_np)
-    return dataset_split(args, rating_np)
+    return dataset_split(rating_np)
 
 
-def dataset_split(args, rating_np):
+def dataset_split(rating_np):
     print('splitting dataset ...')
-    k = pd.DataFrame(rating_np, columns=['user', 'item', 'label'])
 
-    value_counts = k[k['label']==1]['user'].value_counts()
-    to_remove = value_counts[value_counts <= args.history_item].index
-    df = k[~k['user'].isin(to_remove)]
-    user_history = df[df['label']==1].groupby('user').apply(lambda x: x.sample(args.history_item,random_state=555))
-    user_history_id = [y for x, y in user_history.index.tolist()]
-    df = df.drop(user_history_id)
+    # train:user_history:test = 6:2:2
+    train_ratio = 0.6
+    test_ratio = 0.2
+    n_ratings = rating_np.shape[0]
+    np.random.seed(555)
+    train_indices = np.random.choice(n_ratings, size=int(n_ratings * train_ratio), replace=False)
+    left = set(range(n_ratings)) - set(train_indices)
+    np.random.seed(555)
+    test_indices = np.random.choice(list(left), size=int(n_ratings * test_ratio), replace=False)
+    user_history_indices = list(left - set(test_indices))
 
+    # traverse training data, only keeping the users with positive ratings
     user_history_dict = dict()
-    for i, u in enumerate(list(set(user_history['user'].tolist()))):
-        sub = user_history[user_history['user']==u]['item'].tolist()
-        
-        if u not in user_history_dict:
-            user_history_dict[u] = []
-        user_history_dict[u].extend(sub)
+    for i in user_history_indices:
+        user = rating_np[i][0]
+        item = rating_np[i][1]
+        rating = rating_np[i][2]
+        if rating == 1:
+            if user not in user_history_dict:
+                user_history_dict[user] = []
+            user_history_dict[user].append(item)
 
-    train_data, test_data = train_test_split(df.to_numpy(), train_size=0.8, random_state=42)
+    train_indices = [i for i in train_indices if rating_np[i][0] in user_history_dict]
+    test_indices = [i for i in test_indices if rating_np[i][0] in user_history_dict]
+
+    train_data = rating_np[train_indices]
+    test_data = rating_np[test_indices]
+
+
     return train_data, test_data, user_history_dict
 
 def load_kg(args, kg_file):
@@ -82,11 +91,11 @@ def construct_kg(kg_np):
 def get_ripple_set(args, kg, user_history_dict):
     print('constructing ripple set ...')
   
-    max_user_history_item = args.history_item* args.sample_triplet
+    max_user_history_item = 32
     ripple_set = collections.defaultdict(list)
     
     for user in user_history_dict:
-        temp_set = set()
+
         for h in range(args.n_hop):
             memories_h = []
             memories_r = []
@@ -95,22 +104,13 @@ def get_ripple_set(args, kg, user_history_dict):
             # find seed to search graph
             if h == 0:
                 tails_of_last_hop = user_history_dict[user]
-                temp_set = set(tails_of_last_hop)
             else:
-                tails_of_last_hop = list(set(ripple_set[user][-1][2]) - temp_set)
-                temp_set = set.union(temp_set, set(ripple_set[user][-1][2]))
-                # tails_of_last_hop = ripple_set[user][-1][2]
+                tails_of_last_hop = ripple_set[user][-1][2]
 
             # search graph
             for entity in tails_of_last_hop:
-                triplets = kg[entity]
-                if len(triplets) < args.sample_triplet:
-                    sample_triplets = triplets
-                else:
-                    random.seed(555)
-                    sample_triplets = random.sample(triplets, args.sample_triplet)
-                
-                for tail_and_relation in sample_triplets:
+                triplets = kg[entity] 
+                for tail_and_relation in triplets:
                     memories_h.append(entity)
                     memories_r.append(tail_and_relation[1])
                     memories_t.append(tail_and_relation[0])

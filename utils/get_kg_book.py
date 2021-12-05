@@ -4,30 +4,10 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm 
 
-import wikidata as wikidata
+import wikidata1 as wikidata
 
-PATH = '../data/movie-1m-wiki/'
+PATH = '../data/book-wiki/'
 HOP = 3
-DATASET_NAME = '1m'
-
-def get_movielens(item_file, user_file, rating_file):
-    from rs_datasets import MovieLens
-    ml = MovieLens(DATASET_NAME)
-    item_df = ml.items
-    user_df = ml.users
-    rating_df = ml.ratings
-    origin_len = item_df.shape[0]
-
-    item_df = item_df.drop_duplicates(subset=['title'])
-    item_df = item_df[['item_id', 'title']]
-    print('Drop duplicate items: {}'.format(item_df.shape[0]-origin_len))
-
-    rating_df = rating_df[['user_id', 'item_id', 'rating']]
-    
-    # save to csv
-    user_df.to_csv(user_file, sep='\t', index=False)
-    item_df.to_csv(item_file, sep='\t', index=False)
-    rating_df.to_csv(rating_file, sep='\t', index=False)
 
 def get_book(item_file, user_file, rating_file):
     from rs_datasets import BookCrossing
@@ -42,7 +22,6 @@ def get_book(item_file, user_file, rating_file):
     user_df.to_csv(user_file, sep='\t', index=False)
     rating_df.to_csv(rating_file, sep='\t', index=False)
     item_df.to_csv(item_file, sep='\t', index=False)
-
 
 def get_item_list(file):
     """
@@ -64,13 +43,14 @@ def process_link(link_output, item_list):
     notFound = []
     link_writer.write('%s\t%s\t%s\t%s\n' % ('item_id', 'item_name', 'entity_id', 'entity_name'))
     for idx, items in enumerate(tqdm(item_list)):
-        entity_id, entity_name = wikidata.find_wikidata_id(items[1])
+        time.sleep(0.5)
+        entity_id, entity_name, isCheck = wikidata.find_wikidata_id(items[1], category=['novel', 'book', 'write', 'wrote','written','author', 'fiction', 'story', 'stories'], limit=3)
 
         if entity_id == "entityNotFound":
             notFound.append(items[0])
             continue
         
-        link_writer.write('%s\t%s\t%s\t%s\n' % (items[0], items[1], entity_id, entity_name))
+        link_writer.write('%s\t%s\t%s\t%s\t%s\n' % (items[0], items[1], entity_id, entity_name, str(isCheck)))
         total_item_entity.append([entity_id, items[1]])
     return total_item_entity, notFound
 
@@ -92,17 +72,17 @@ def process_kg(kg_output, kg_full_output, item_entity_list):
     triple_ctx = 0
     triple_ctx_list = [0, triple_ctx]
     entities_list = [item_entity_list]
-    enitty_set = set()
+
     for h in range(HOP):
-        LIMIT = 20
+        LIMIT = 5
     
         if h ==0:
-            LIMIT = 500
-        print('Hop: {}, length: {}, triple:{}'.format(h, len(entities_list), triple_ctx_list[-1] -triple_ctx_list[-2] ))
+            LIMIT = 50
+        print('Hop: {}, length: {}, triple:{}'.format(h, len(entities_list), triple_ctx_list[-2] -triple_ctx_list[-1] ))
         temp = []  
         not_find = []
         for idx, entities in enumerate(tqdm(entities_list[-1])):
-            enitty_set.add(entities[0])
+            
             json_links = wikidata.query_entity_links(entities[0], limit=LIMIT)
             related_links = wikidata.read_linked_entities(json_links)
 
@@ -118,34 +98,32 @@ def process_kg(kg_output, kg_full_output, item_entity_list):
                     tail=related_entity,
                     tail_name=related_name,
                 )
-                if related_entity not in enitty_set:
-                    temp.append([related_entity, related_name])
+                temp.append([related_entity, related_name])
                 triple_ctx +=1 
                 kg_writer.write('%s\t%s\t%s\n' % (entities[0], relation, related_entity))
                 kg_full_writer.write('%s\t%s\t%s\t%s\t%s\t%s\n' % (entities[0], entities[1], relation, relation_name, related_entity, related_name))
           
         entities_list.append(temp) 
         triple_ctx_list.append(triple_ctx)
-        
         if h==0:
             print(not_find)
     print('TOTAL TRIPLES: {}'.format(triple_ctx))
 
 if __name__ == '__main__':
-    user_file = PATH + 'movie.user'
-    item_file = PATH + 'movie.item'
-    rating_file= PATH + 'movie.inter'
-    link_output = PATH + 'movie.link'
-    kg_output = PATH + 'movie.kg'
-    full_link_output = PATH + 'movie-full.link'
-    kg_full_output = PATH + 'movie-full.kg'
+    user_file = PATH + 'book.user'
+    item_file = PATH + 'book.item'
+    rating_file= PATH + 'book.inter'
+    link_output = PATH + 'book.link'
+    kg_output = PATH + 'book.kg'
+    full_link_output = PATH + 'book-full.link'
+    kg_full_output = PATH + 'book-full.kg'
 
     '''
-    # get movielens dataset
+    # get book dataset
     print('Download dataset...')
-    get_movielens(item_file, user_file, rating_file)
+    get_book(item_file, user_file, rating_file)
     '''
-    '''
+    
     # get all item 
     item_list = get_item_list(item_file)
 
@@ -155,8 +133,8 @@ if __name__ == '__main__':
     print('NOT FOUND: {}'.format(len(notFound)))
     print(notFound)
     '''
+    print('Covering full-link to link file')
     cover_link_file(full_link_output, link_output)
-    
     
     total_item_entity = []
     for line in open(full_link_output, encoding='utf-8').readlines():
@@ -166,6 +144,7 @@ if __name__ == '__main__':
 
         total_item_entity.append([entity, entity_name])
     
-    print('find relative triples...')
+    print('Find relative triples...')
     process_kg(kg_output, kg_full_output, total_item_entity)
-    ''''''
+    '''
+    

@@ -31,13 +31,8 @@ def get_model(params, model_type):
         'plus_model': net.RippleNet_plus(params),
         'plus2_model': net.RippleNet_plus2(params),
         'item_model': net.RippleNet_item(params),
-        'replace_noKGLoss_model':net.RippleNet_replace_no_kgLoss(params),
 
         'head0_replace_model': net.RippleNet_head0_replace(params),  
-        'head1_replace_model': net.RippleNet_head1_replace(params),
-        'head2_replace_model': net.RippleNet_head2_replace(params),
-        'head3_replace_model': net.RippleNet_head3_replace(params),
-        'head4_replace_model': net.RippleNet_head4_replace(params),   
         'head01_replace_model': net.RippleNet_head01_replace(params),     
         'head012_replace_model': net.RippleNet_head012_replace(params),     
         'head0123_replace_model': net.RippleNet_head0123_replace(params),     
@@ -46,6 +41,7 @@ def get_model(params, model_type):
         'head012_replace_ouptutCosine_model':net.RippleNet_head012_replace_ouptutCosine(params),
         'head012_replace_cosine_model':net.RippleNet_head012_replace_cosine(params),
         
+        'head01234_replace_multi_view_model': net.RippleNet_head01234_replace_multi_view(params), 
     }
     return model[model_type]
     
@@ -86,9 +82,8 @@ def main():
     
     # model
     print("===> Building model")
-
     model = get_model(params, args.model_type)
-    
+
     model = model.to(params.device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), params.learning_rate)
     tb = tensorboard.Tensorboard(args.model_dir, False)
@@ -104,8 +99,9 @@ def main():
 
     logging.info("Number of Entity: {}, Number of Relation: {}, User History item: {}".format(n_entity, n_relation, max_user_history_item))
     logging.info("Training Dataset: {}, Test Dataset: {}".format(len(train_set), len(test_set)))
+    logging.info("MODEL NAME: {}".format(model.__class__.__name__))
+    logging.info("SAMPLER NAME: {}".format(load_data.__name__))
     logging.info("===> Starting training ...")
-    logging.info(model.__class__.__name__)
     print(model)
 
     # Train
@@ -123,7 +119,7 @@ def main():
                 memories_h = memories_h.permute(1, 0, 2).to(params.device)
                 memories_r = memories_r.permute(1, 0, 2).to(params.device)
                 memories_t = memories_t.permute(1, 0, 2).to(params.device)
-                return_dict = model(items, labels, memories_h, memories_r, memories_t)
+                return_dict, _ = model(items, labels, memories_h, memories_r, memories_t)
                 loss = return_dict["loss"]
 
                 optimizer.zero_grad()

@@ -28,7 +28,7 @@ def evaluation(params, model, data_generator):
         memories_r = memories_r.permute(1, 0, 2).to(params.device)
         memories_t = memories_t.permute(1, 0, 2).to(params.device)
         
-        return_dict = model(items, labels, memories_h, memories_r, memories_t)
+        return_dict, _ = model(items, labels, memories_h, memories_r, memories_t)
         scores = return_dict["scores"].detach().cpu().numpy()
         labels = labels.cpu().numpy()
         auc = roc_auc_score(y_true=labels, y_score=scores)
